@@ -11,10 +11,10 @@
     <div class="app-shell">
       <header class="topbar">
         <a class="brand" href="#top" aria-label="Mesa de tickets, inicio">
-          <span class="brand-mark">A</span>
+          <span class="brand-mark" id="brandMark">J</span>
           <span>
-            <strong>Mesa de tickets</strong>
-            <small>Julio · espacio de trabajo local</small>
+            <strong id="brandName">Mesa de tickets</strong>
+            <small id="brandWorkspace">Julio · espacio de trabajo local</small>
           </span>
         </a>
 
@@ -26,14 +26,14 @@
 
         <div class="topbar-actions">
           <span class="local-status"><span class="status-dot"></span> Guardado local</span>
-          <button class="avatar-button" type="button" aria-label="Abrir menú de usuario">JP</button>
+          <button class="avatar-button" id="profileButton" type="button" aria-label="Abrir perfil">JP</button>
         </div>
       </header>
 
       <div class="product-layout" id="top">
         <aside class="sequence-rail" aria-label="Resumen de la cola">
           <div class="rail-spine" aria-hidden="true"></div>
-          <div class="rail-label">JULIO <span>·</span> 27 SEP 2026</div>
+          <div class="rail-label"><span id="railWorkspace">JULIO</span> <span>·</span> <span id="railDate">27 SEP 2026</span></div>
           <div class="rail-summary">
             <span class="rail-summary-number" id="railTotal">12</span>
             <span>pendientes<br />en la mesa</span>
@@ -95,10 +95,9 @@
                   <input id="searchInput" type="search" placeholder="Buscar por asunto, módulo o área" autocomplete="off" />
                   <kbd>/</kbd>
                 </label>
-                <div class="filter-row" aria-label="Filtros rápidos">
+                <div class="filter-row" id="categoryFilters" aria-label="Filtros rápidos">
                   <button class="filter-chip is-active" type="button" data-filter="all" aria-pressed="true">Todos</button>
                   <button class="filter-chip" type="button" data-filter="high" aria-pressed="false">Alta prioridad</button>
-                  <button class="filter-chip" type="button" data-filter="odoo" aria-pressed="false">Odoo</button>
                 </div>
               </div>
               <div class="film-rule" aria-hidden="true"><span></span><i></i><i></i><i></i><i></i><i></i><i></i><i></i><span></span></div>
@@ -222,6 +221,90 @@
       </div>
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <div class="auth-gate" id="authGate" aria-hidden="true">
+      <section class="auth-card" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+        <div class="auth-mark" aria-hidden="true">J</div>
+        <p class="auth-kicker">MESA PERSONAL</p>
+        <h2 id="authTitle">Entra a tu mesa de trabajo</h2>
+        <p class="auth-copy">Crea o elige un perfil para guardar tu nombre, color, categorías y tickets en este navegador.</p>
+
+        <div id="profilePicker" class="profile-picker">
+          <div class="profile-list" id="profileList"></div>
+          <button class="button button-primary auth-create-button" id="createProfileButton" type="button">Crear un perfil</button>
+        </div>
+
+        <form class="profile-form is-hidden" id="onboardingForm">
+          <label class="field">
+            <span>Tu nombre <em>*</em></span>
+            <input id="onboardingName" type="text" maxlength="40" placeholder="Ej. Julio" autocomplete="name" required />
+          </label>
+          <label class="field">
+            <span>Iniciales</span>
+            <input id="onboardingInitials" type="text" maxlength="3" placeholder="JP" autocomplete="off" />
+          </label>
+          <div class="field">
+            <span>Color de tu mesa</span>
+            <div class="color-picker" id="onboardingColors" role="radiogroup" aria-label="Color de perfil"></div>
+          </div>
+          <p class="auth-note">Podrás cambiar estas opciones y crear tus categorías desde tu avatar.</p>
+          <div class="auth-actions">
+            <button class="button button-quiet" id="backToProfilesButton" type="button">Volver</button>
+            <button class="button button-primary" type="submit">Entrar a mi mesa</button>
+          </div>
+        </form>
+      </section>
+    </div>
+
+    <div class="modal-shell is-hidden" id="profileModal" aria-hidden="true">
+      <div class="modal-backdrop" data-close-profile></div>
+      <section class="profile-dialog" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
+        <div class="dialog-header">
+          <div>
+            <p class="auth-kicker">CONFIGURACIÓN</p>
+            <h2 id="profileTitle">Tu perfil</h2>
+            <p class="dialog-copy">Personaliza cómo se ve y cómo se organiza tu mesa.</p>
+          </div>
+          <button class="icon-button dialog-close" id="closeProfileButton" type="button" aria-label="Cerrar configuración">×</button>
+        </div>
+        <form class="profile-form" id="profileForm">
+          <div class="profile-form-grid">
+            <label class="field">
+              <span>Nombre visible <em>*</em></span>
+              <input id="profileNameInput" type="text" maxlength="40" required />
+            </label>
+            <label class="field">
+              <span>Iniciales</span>
+              <input id="profileInitialsInput" type="text" maxlength="3" />
+            </label>
+          </div>
+          <div class="field">
+            <span>Color de tu mesa</span>
+            <div class="color-picker" id="profileColors" role="radiogroup" aria-label="Color de perfil"></div>
+          </div>
+          <div class="category-editor">
+            <div class="category-editor-heading">
+              <div>
+                <span class="field-label">Mis categorías</span>
+                <small>Úsalas para clasificar y filtrar tus tickets.</small>
+              </div>
+              <span class="category-count" id="categoryCount">0</span>
+            </div>
+            <div class="category-list" id="categoryList"></div>
+            <div class="category-add-row">
+              <input id="categoryInput" type="text" maxlength="28" placeholder="Nueva categoría" />
+              <button class="button button-quiet" id="addCategoryButton" type="button">Añadir</button>
+            </div>
+            <p class="form-error is-hidden" id="profileError" role="alert"></p>
+          </div>
+          <div class="dialog-footer">
+            <button class="button button-quiet" id="logoutButton" type="button">Cambiar de perfil</button>
+            <button class="button button-primary" type="submit">Guardar cambios</button>
+          </div>
+        </form>
+      </section>
+    </div>
+
     <script src="app.js"></script>
   </body>
 </html>
