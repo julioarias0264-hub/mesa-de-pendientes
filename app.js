@@ -568,13 +568,17 @@ function saveProfile(event) {
     $('#profileNameInput').focus();
     return;
   }
-  const initials = $('#profileInitialsInput').value.trim().replace(/[^a-z0-9]/gi, '').toUpperCase() || profileInitials(name);
+  const initialsInput = $('#profileInitialsInput').value.trim().replace(/[^a-z0-9]/gi, '').toUpperCase();
+  const initials = name !== profileDraft.name && initialsInput === profileDraft.initials
+    ? profileInitials(name)
+    : initialsInput || profileInitials(name);
   const updated = normalizeProfile({ ...profileDraft, name, initials });
   profiles = profiles.map((profile) => profile.id === updated.id ? updated : profile);
   currentProfile = updated;
   persistProfiles();
   applyProfileTheme();
   updateProfileSummary();
+  renderHome();
   renderCategoryOptions();
   renderFilterChips();
   closeProfileModal();
