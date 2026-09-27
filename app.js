@@ -418,6 +418,7 @@ function updateProfileSummary() {
   $('#profileButton').setAttribute('aria-label', `Abrir perfil de ${currentProfile.name}`);
   $('#railWorkspace').textContent = currentProfile.name.toUpperCase();
   $('#railDate').textContent = new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' }).replace('.', '').toUpperCase();
+  $('#railEnvironment').textContent = currentProfile.name;
   $('#authMark').textContent = currentProfile.initials;
 }
 
