@@ -386,8 +386,18 @@ h1 { margin-bottom: 12px; color: var(--paper); font-size: clamp(32px, 3.8vw, 52p
 .cloud-auth-form { display: grid; gap: 13px; }
 .cloud-auth-form .field { gap: 6px; }
 .cloud-auth-form .field span { color: var(--muted); }
-.cloud-auth-form input { height: 39px; border: 1px solid var(--line); background: rgba(11, 14, 15, .52); color: var(--paper); padding: 10px 11px; font-size: 12px; }
+.cloud-auth-form input { height: 39px; appearance: none; color-scheme: dark; border: 1px solid var(--line); background: var(--ink-soft) !important; color: var(--paper) !important; caret-color: var(--paper); padding: 10px 11px; font-size: 12px; }
 .cloud-auth-form input:focus { outline: 0; border-color: var(--profile-color, var(--orange)); }
+.cloud-auth-form input::placeholder { color: var(--muted); opacity: 1; }
+.cloud-auth-form input:-webkit-autofill,
+.cloud-auth-form input:-webkit-autofill:hover,
+.cloud-auth-form input:-webkit-autofill:focus,
+.cloud-auth-form input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px var(--ink-soft) inset;
+  -webkit-text-fill-color: var(--paper);
+  caret-color: var(--paper);
+  transition: background-color 9999s ease-out 0s;
+}
 .cloud-auth-form .button { width: 100%; }
 .cloud-auth-toggle { margin-top: 13px; padding: 0; border: 0; font-size: 10px; }
 .cloud-auth-status { min-height: 15px; margin: 11px 0 0; color: var(--orange-hot); font-family: 'DM Mono', monospace; font-size: 10px; line-height: 1.45; }
