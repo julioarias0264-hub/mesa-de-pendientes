@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0b0e0f" />
+    <title>Enviar solicitud · Mesa de Julio</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="public-page">
+    <main class="public-shell">
+      <header class="public-header">
+        <a class="brand" href="index.html" aria-label="Volver a la mesa de trabajo">
+          <span class="brand-mark">J</span>
+          <span><strong>Mesa de trabajo</strong><small>Formulario de solicitudes</small></span>
+        </a>
+        <span class="public-header-note">JULIO · RECEPCIÓN</span>
+      </header>
+
+      <section class="public-layout">
+        <div class="public-intro">
+          <p class="public-kicker">ENVIAR SOLICITUD</p>
+          <h1>Cuéntame qué necesitas.</h1>
+          <p>Completa este formulario y la solicitud llegará directamente a la mesa de Julio con el contexto necesario para darle seguimiento.</p>
+          <div class="public-note"><span class="public-note-mark">01</span><span>Una solicitud clara ayuda a que el siguiente paso sea más rápido.</span></div>
+        </div>
+
+        <section class="public-form-panel" aria-labelledby="publicFormTitle">
+          <div class="public-panel-heading"><div><span class="public-kicker">NUEVA ENTRADA</span><h2 id="publicFormTitle">Enviar solicitud</h2></div><span class="public-panel-code">JUL—</span></div>
+          <form id="publicTicketForm" class="public-ticket-form">
+            <label class="public-field public-field-span-2"><span>¿Qué necesitas? <em>*</em></span><input id="titleInput" name="title" type="text" placeholder="Ej. Agregar una opción al reporte" required /></label>
+            <label class="public-field public-field-span-2"><span>Descríbelo con detalle <em>*</em></span><textarea name="description" rows="5" placeholder="¿Qué sucede ahora y qué resultado esperas?" required></textarea></label>
+            <div class="public-field-grid">
+              <label class="public-field"><span>Área <em>*</em></span><select name="area" required><option value="">Selecciona una opción</option><option>Odoo</option><option>Administración</option><option>Clientes</option><option>Operación</option><option>Automatización</option><option>Desarrollo</option><option>Otro</option></select></label>
+              <label class="public-field"><span>Tipo <em>*</em></span><select name="type" required><option value="">Selecciona una opción</option><option>Solicitud</option><option>Bug</option><option>Mejora</option><option>Seguimiento</option><option>Configuración</option></select></label>
+              <label class="public-field"><span>Prioridad <em>*</em></span><select name="priority"><option>Media</option><option>Alta</option><option>Baja</option></select></label>
+              <label class="public-field"><span>Proyecto o herramienta</span><input name="module" type="text" placeholder="Ej. Odoo, ventas o documento" /></label>
+            </div>
+            <div class="public-divider"><span>Quién solicita</span></div>
+            <div class="public-field-grid">
+              <label class="public-field"><span>Tu nombre <em>*</em></span><input name="requester" type="text" placeholder="Nombre y apellido" required /></label>
+              <label class="public-field"><span>Correo para seguimiento</span><input name="requester_email" type="email" placeholder="tu@correo.com" /></label>
+            </div>
+            <label class="public-field"><span>¿Cómo sabremos que quedó bien? <em>*</em></span><textarea name="acceptance" rows="3" placeholder="Escribe una condición que se pueda comprobar." required></textarea></label>
+            <p class="public-form-message" id="publicFormMessage" role="status"></p>
+            <div class="public-form-footer"><span>Los campos con * son necesarios.</span><button class="button button-primary" id="publicSubmitButton" type="submit">Enviar solicitud <span aria-hidden="true">→</span></button></div>
+          </form>
+          <div class="public-success" id="publicSuccess" role="status"><span class="public-success-mark">✓</span><p class="public-kicker">SOLICITUD RECIBIDA</p><h2>Ya llegó a la mesa.</h2><p>Tu número de seguimiento es <strong id="publicSuccessCode">JUL—</strong>. Julio podrá verla y darle seguimiento.</p><button class="button button-quiet" id="sendAnotherButton" type="button">Enviar otra solicitud</button></div>
+        </section>
+      </section>
+    </main>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+    <script src="public-form.js"></script>
+  </body>
+</html>

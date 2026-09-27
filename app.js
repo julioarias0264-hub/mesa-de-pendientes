@@ -15,6 +15,11 @@ const COLOR_OPTIONS = [
 const DEFAULT_CATEGORIES = ['Clientes', 'Administración', 'Desarrollo', 'Automatización', 'Operación', 'Personal', 'Documentación', 'Odoo'];
 const seedTickets = [];
 const statusLabels = { new: 'Nuevo', review: 'En revisión', qa: 'Listo para avanzar', blocked: 'Bloqueado', done: 'Cerrado' };
+const supabaseConfig = window.MESA_SUPABASE || {};
+const supabaseClient = window.supabase?.createClient && supabaseConfig.url && supabaseConfig.publishableKey
+  ? window.supabase.createClient(supabaseConfig.url, supabaseConfig.publishableKey)
+  : null;
+const cloudEnabled = Boolean(supabaseClient);
 
 let profiles = loadProfiles();
 let activeProfileId = localStorage.getItem(ACTIVE_PROFILE_KEY) || profiles[0]?.id || null;
@@ -27,6 +32,9 @@ let searchTerm = '';
 let isNewTicket = false;
 let onboardingColor = COLOR_OPTIONS[0].value;
 let profileDraft = null;
+let cloudUser = null;
+let localOnlySession = false;
+let cloudAuthMode = 'login';
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -92,6 +100,101 @@ function loadTicketsForProfile(profileId) {
 
 function persist() {
   if (activeProfileId) localStorage.setItem(`${STORAGE_KEY}:${activeProfileId}`, JSON.stringify(tickets));
+}
+
+function isCloudSession() {
+  return Boolean(cloudEnabled && cloudUser && !localOnlySession);
+}
+
+function formatCloudTime(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return `el ${date.toLocaleDateString('es-MX', { day: '2-digit', month: 'short' }).replace('.', '')} a las ${date.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}`;
+}
+
+function mapCloudTicket(row) {
+  return {
+    id: row.code,
+    title: row.title || '',
+    description: row.description || '',
+    area: row.area || '',
+    type: row.type || '',
+    priority: row.priority || '',
+    module: row.module || '',
+    requester: row.requester || '',
+    requester_email: row.requester_email || '',
+    environment: row.environment || 'Cliente',
+    acceptance: row.acceptance || '',
+    status: row.status || 'new',
+    source: row.source || 'public',
+    updated: formatCloudTime(row.updated_at),
+    createdAt: row.created_at || ''
+  };
+}
+
+function ticketToCloudRow(ticket) {
+  return {
+    code: ticket.id,
+    title: ticket.title,
+    description: ticket.description,
+    area: ticket.area,
+    type: ticket.type,
+    priority: ticket.priority,
+    module: ticket.module || '',
+    requester: ticket.requester || '',
+    requester_email: ticket.requester_email || '',
+    environment: ticket.environment || 'Local',
+    acceptance: ticket.acceptance,
+    status: ticket.status || 'new',
+    source: ticket.source || 'desk'
+  };
+}
+
+async function refreshCloudTickets({ quiet = false } = {}) {
+  if (!isCloudSession()) return false;
+  const { data, error } = await supabaseClient.from('tickets').select('*').order('created_at', { ascending: false });
+  if (error) {
+    console.error(error);
+    if (!quiet) showToast('No se pudo actualizar la cola en la nube.');
+    return false;
+  }
+  tickets = (data || []).map(mapCloudTicket);
+  selectedId = tickets[0]?.id || null;
+  if (tickets[0]) {
+    isNewTicket = false;
+    fillForm(tickets[0]);
+  } else {
+    isNewTicket = true;
+    clearForm();
+  }
+  persist();
+  renderList();
+  setView(activeView);
+  updateSyncStatus();
+  if (!quiet) showToast('Cola sincronizada.');
+  return true;
+}
+
+async function cloudInsertTicket(ticket) {
+  if (!isCloudSession()) return ticket;
+  const { data, error } = await supabaseClient.from('tickets').insert(ticketToCloudRow(ticket)).select('*').single();
+  if (error) throw error;
+  return mapCloudTicket(data);
+}
+
+async function cloudUpdateTicket(ticket) {
+  if (!isCloudSession()) return ticket;
+  const { data, error } = await supabaseClient.from('tickets').update(ticketToCloudRow(ticket)).eq('code', ticket.id).select('*').single();
+  if (error) throw error;
+  return mapCloudTicket(data);
+}
+
+async function cloudUpdateStatus(ticket) {
+  if (!isCloudSession()) return ticket;
+  const { data, error } = await supabaseClient.from('tickets').update({ status: ticket.status }).eq('code', ticket.id).select('*').single();
+  if (error) throw error;
+  return mapCloudTicket(data);
 }
 
 function priorityClass(priority) {
@@ -283,7 +386,7 @@ function getFormData() {
   };
 }
 
-function saveTicket(event) {
+async function saveTicket(event) {
   event.preventDefault();
   const data = getFormData();
   if (!data.title || !data.description || !data.area || !data.type || !data.priority || !data.acceptance) {
@@ -297,25 +400,37 @@ function saveTicket(event) {
   saveButton.disabled = true;
   saveButton.setAttribute('aria-busy', 'true');
   const now = new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
-  if (isNewTicket) {
-    const nextNumber = Math.max(...tickets.map((ticket) => Number(String(ticket.id).replace(/\D/g, ''))), 0) + 1;
-    const ticket = { id: `JUL-${String(nextNumber).padStart(4, '0')}`, ...data, status: 'new', updated: `a las ${now}` };
-    tickets = [ticket, ...tickets];
-    selectedId = ticket.id;
-    isNewTicket = false;
-  } else {
-    const index = tickets.findIndex((ticket) => ticket.id === selectedId);
-    if (index !== -1) tickets[index] = { ...tickets[index], ...data, updated: `a las ${now}` };
+  try {
+    if (isNewTicket) {
+      const nextNumber = Math.max(...tickets.map((ticket) => Number(String(ticket.id).replace(/\D/g, ''))), 0) + 1;
+      let ticket = { id: `JUL-${String(nextNumber).padStart(4, '0')}`, ...data, status: 'new', updated: `a las ${now}`, source: 'desk' };
+      ticket = await cloudInsertTicket(ticket);
+      tickets = [ticket, ...tickets.filter((item) => item.id !== ticket.id)];
+      selectedId = ticket.id;
+      isNewTicket = false;
+    } else {
+      const index = tickets.findIndex((ticket) => ticket.id === selectedId);
+      if (index !== -1) {
+        let ticket = { ...tickets[index], ...data, updated: `a las ${now}` };
+        ticket = await cloudUpdateTicket(ticket);
+        tickets[index] = ticket;
+      }
+    }
+    persist();
+    renderList();
+    selectTicket(selectedId);
+    showToast(isCloudSession() ? 'Ticket sincronizado en la nube.' : 'Ticket guardado en la mesa.');
+  } catch (error) {
+    console.error(error);
+    showFormError('No se pudo guardar en la nube. Revisa la configuración de Supabase e inténtalo de nuevo.');
+    showToast('No se pudo guardar el ticket.');
+  } finally {
+    saveButton.disabled = false;
+    saveButton.removeAttribute('aria-busy');
   }
-  persist();
-  saveButton.disabled = false;
-  saveButton.removeAttribute('aria-busy');
-  renderList();
-  selectTicket(selectedId);
-  showToast('Ticket guardado en la mesa.');
 }
 
-function advanceStatus() {
+async function advanceStatus() {
   if (isNewTicket) {
     showToast('Guarda el ticket antes de enviarlo a la cola.');
     return;
@@ -324,10 +439,21 @@ function advanceStatus() {
   if (!ticket) return;
   ticket.status = $('#advanceStatusButton').dataset.nextStatus;
   ticket.updated = 'ahora';
-  persist();
-  updateStatus(ticket.status);
-  renderList();
-  showToast(ticket.status === 'qa' ? 'Ticket marcado como listo para avanzar.' : ticket.status === 'review' ? 'Ticket devuelto a revisión.' : 'Ticket reabierto.');
+  const button = $('#advanceStatusButton');
+  button.disabled = true;
+  try {
+    const updated = await cloudUpdateStatus(ticket);
+    Object.assign(ticket, updated);
+    persist();
+    updateStatus(ticket.status);
+    renderList();
+    showToast(ticket.status === 'qa' ? 'Ticket marcado como listo para avanzar.' : ticket.status === 'review' ? 'Ticket devuelto a revisión.' : 'Ticket reabierto.');
+  } catch (error) {
+    console.error(error);
+    showToast('No se pudo actualizar el estado.');
+  } finally {
+    button.disabled = false;
+  }
 }
 
 function smartStructure() {
@@ -410,6 +536,12 @@ function applyProfileTheme() {
   if (meta) meta.content = color.value;
 }
 
+function updateSyncStatus() {
+  const node = $('#syncStatus');
+  if (!node) return;
+  node.textContent = isCloudSession() ? 'Sincronizado en la nube' : 'Guardado local';
+}
+
 function updateProfileSummary() {
   if (!currentProfile) return;
   $('#brandMark').textContent = currentProfile.initials[0] || 'J';
@@ -420,6 +552,7 @@ function updateProfileSummary() {
   $('#railDate').textContent = new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' }).replace('.', '').toUpperCase();
   $('#railEnvironment').textContent = currentProfile.name;
   $('#authMark').textContent = currentProfile.initials;
+  updateSyncStatus();
 }
 
 function initializeWorkspace() {
@@ -467,13 +600,110 @@ function showOnboarding() {
   setTimeout(() => $('#onboardingName').focus(), 0);
 }
 
+function setCloudAuthStatus(message, success = false) {
+  const node = $('#cloudAuthStatus');
+  if (!node) return;
+  node.textContent = message;
+  node.classList.toggle('is-success', success);
+}
+
+function renderCloudAuthPanel() {
+  const panel = $('#cloudAuthPanel');
+  if (!panel) return;
+  panel.classList.toggle('is-hidden', !cloudEnabled || Boolean(cloudUser) || localOnlySession);
+  const isSignup = cloudAuthMode === 'signup';
+  $('#cloudAuthTitle').textContent = isSignup ? 'Crea tu acceso en la nube' : 'Entra a tu mesa en la nube';
+  $('#cloudAuthCopy').textContent = isSignup ? 'Crea una cuenta para que sólo tú puedas leer y administrar los tickets.' : 'Usa el correo y contraseña de tu usuario de Supabase Auth.';
+  $('#cloudAuthSubmit').textContent = isSignup ? 'Crear cuenta' : 'Entrar a la nube';
+  $('#cloudAuthToggle').textContent = isSignup ? 'Ya tengo una cuenta' : 'Crear una cuenta nueva';
+}
+
 function showAuthGate() {
   $('#authGate').setAttribute('aria-hidden', 'false');
+  renderCloudAuthPanel();
+  if (cloudEnabled && !cloudUser && !localOnlySession) {
+    $('#profilePicker').classList.add('is-hidden');
+    $('#onboardingForm').classList.add('is-hidden');
+    return;
+  }
   if (profiles.length) showProfilePicker(); else showOnboarding();
 }
 
 function hideAuthGate() {
   $('#authGate').setAttribute('aria-hidden', 'true');
+}
+
+function showLocalMode() {
+  localOnlySession = true;
+  renderCloudAuthPanel();
+  if (profiles.length) showProfilePicker(); else showOnboarding();
+}
+
+async function submitCloudAuth(event) {
+  event.preventDefault();
+  if (!supabaseClient) return;
+  const email = $('#cloudEmailInput').value.trim();
+  const password = $('#cloudPasswordInput').value;
+  const button = $('#cloudAuthSubmit');
+  button.disabled = true;
+  setCloudAuthStatus(cloudAuthMode === 'signup' ? 'Creando cuenta…' : 'Entrando…');
+  const result = cloudAuthMode === 'signup'
+    ? await supabaseClient.auth.signUp({ email, password })
+    : await supabaseClient.auth.signInWithPassword({ email, password });
+  button.disabled = false;
+  if (result.error) {
+    console.error(result.error);
+    setCloudAuthStatus(result.error.message || 'No se pudo completar el acceso.');
+    return;
+  }
+  if (cloudAuthMode === 'signup' && !result.data.session) {
+    setCloudAuthStatus('Revisa tu correo para confirmar la cuenta y después vuelve a entrar.', true);
+    return;
+  }
+  cloudUser = result.data.user;
+  localOnlySession = false;
+  setCloudAuthStatus('Acceso correcto.', true);
+  await enterCloudWorkspace();
+}
+
+async function enterCloudWorkspace() {
+  const synced = await refreshCloudTickets({ quiet: true });
+  if (!synced) {
+    await supabaseClient.auth.signOut();
+    setCloudAuthStatus('Falta ejecutar el esquema SQL en Supabase antes de entrar.', false);
+    showAuthGate();
+    return;
+  }
+  renderCloudAuthPanel();
+  if (currentProfile) {
+    hideAuthGate();
+    initializeWorkspace();
+    showToast(`Bienvenido, ${currentProfile.name}.`);
+  } else {
+    showAuthGate();
+  }
+}
+
+async function bootCloud() {
+  if (!cloudEnabled) {
+    if (currentProfile) initializeWorkspace(); else showAuthGate();
+    return;
+  }
+  const { data } = await supabaseClient.auth.getSession();
+  cloudUser = data.session?.user || null;
+  supabaseClient.auth.onAuthStateChange((_event, session) => {
+    cloudUser = session?.user || null;
+    if (cloudUser && !localOnlySession) void enterCloudWorkspace();
+    if (!cloudUser && !localOnlySession) showAuthGate();
+    updateSyncStatus();
+  });
+  if (cloudUser) {
+    await enterCloudWorkspace();
+  } else if (currentProfile && !localOnlySession) {
+    showAuthGate();
+  } else {
+    showAuthGate();
+  }
 }
 
 function createProfile(event) {
@@ -493,13 +723,13 @@ function loginProfile(profileId) {
   activeProfileId = profile.id;
   currentProfile = profile;
   localStorage.setItem(ACTIVE_PROFILE_KEY, activeProfileId);
-  tickets = loadTicketsForProfile(activeProfileId);
+  if (!isCloudSession()) tickets = loadTicketsForProfile(activeProfileId);
   activeFilter = 'all';
   searchTerm = '';
   $('#searchInput').value = '';
   hideAuthGate();
   initializeWorkspace();
-  showToast(`Bienvenido, ${currentProfile.name}.`);
+  showToast(`${isCloudSession() ? 'Mesa sincronizada' : 'Bienvenido'}, ${currentProfile.name}.`);
 }
 
 function openProfileModal() {
@@ -645,7 +875,7 @@ $('#homeSettingsButton').addEventListener('click', openProfileModal);
 $('#homeProfileButton').addEventListener('click', openProfileModal);
 $('#discardButton').addEventListener('click', () => { if (isNewTicket) { if (tickets[0]) selectTicket(tickets[0].id); else clearForm(); } else selectTicket(selectedId); showToast('Cambios descartados.'); });
 $('#searchInput').addEventListener('input', (event) => { searchTerm = event.target.value; renderList(); });
-$('#refreshButton').addEventListener('click', () => { renderList(); showToast('Cola actualizada.'); });
+$('#refreshButton').addEventListener('click', () => { if (isCloudSession()) void refreshCloudTickets(); else { renderList(); showToast('Cola actualizada.'); } });
 $('#profileButton').addEventListener('click', openProfileModal);
 $('#homeLink').addEventListener('click', (event) => { event.preventDefault(); setView('home'); });
 $('#createProfileButton').addEventListener('click', showOnboarding);
@@ -656,6 +886,13 @@ $('#addCategoryButton').addEventListener('click', addCategory);
 $('#categoryInput').addEventListener('keydown', (event) => { if (event.key === 'Enter') { event.preventDefault(); addCategory(); } });
 $('#closeProfileButton').addEventListener('click', closeProfileModal);
 $('#logoutButton').addEventListener('click', logoutProfile);
+$('#cloudAuthForm')?.addEventListener('submit', submitCloudAuth);
+$('#cloudAuthToggle')?.addEventListener('click', () => {
+  cloudAuthMode = cloudAuthMode === 'login' ? 'signup' : 'login';
+  setCloudAuthStatus('');
+  renderCloudAuthPanel();
+});
+$('#cloudLocalButton')?.addEventListener('click', showLocalMode);
 document.addEventListener('click', (event) => {
   const viewButton = event.target.closest('[data-view]');
   if (viewButton) setView(viewButton.dataset.view);
@@ -673,8 +910,4 @@ window.addEventListener('resize', updateScrollHint);
 const authMark = document.querySelector('.auth-mark');
 if (authMark) authMark.id = 'authMark';
 
-if (currentProfile) {
-  initializeWorkspace();
-} else {
-  showAuthGate();
-}
+void bootCloud();
