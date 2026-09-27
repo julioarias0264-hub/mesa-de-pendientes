@@ -15,6 +15,8 @@ const COLOR_OPTIONS = [
 const DEFAULT_CATEGORIES = ['Clientes', 'Administración', 'Desarrollo', 'Automatización', 'Operación', 'Personal', 'Documentación', 'Odoo'];
 const seedTickets = [];
 const statusLabels = { new: 'Nuevo', review: 'En revisión', qa: 'Listo para avanzar', blocked: 'Bloqueado', done: 'Cerrado' };
+const FORM_CONFIG_KEY = 'julio-form-config-v1';
+const DEFAULT_FORM_CONFIG = window.MESA_FORM_DEFAULTS || { areas: [{ name: 'Odoo', subareas: ['PDV', 'Inventario', 'Ventas', 'Compras'] }], types: ['Solicitud', 'Bug', 'Mejora'], priorities: ['Media', 'Alta', 'Baja'] };
 const supabaseConfig = window.MESA_SUPABASE || {};
 const supabaseClient = window.supabase?.createClient && supabaseConfig.url && supabaseConfig.publishableKey
   ? window.supabase.createClient(supabaseConfig.url, supabaseConfig.publishableKey)
@@ -25,6 +27,7 @@ let profiles = loadProfiles();
 let activeProfileId = localStorage.getItem(ACTIVE_PROFILE_KEY) || profiles[0]?.id || null;
 let currentProfile = profiles.find((profile) => profile.id === activeProfileId) || null;
 let tickets = currentProfile ? loadTicketsForProfile(currentProfile.id) : [];
+let formConfig = loadFormConfig();
 let selectedId = tickets[0]?.id || null;
 let activeFilter = 'all';
 let activeView = 'home';
@@ -35,6 +38,7 @@ let profileDraft = null;
 let cloudUser = null;
 let localOnlySession = false;
 let cloudAuthMode = 'login';
+let formConfigDraft = null;
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -54,6 +58,22 @@ function profileInitials(name) {
 
 function normalizeCategories(categories) {
   return [...new Set((Array.isArray(categories) ? categories : []).map((category) => String(category).trim()).filter(Boolean))].slice(0, 24);
+}
+
+function normalizeFormConfig(config) {
+  return window.normalizeMesaFormConfig ? window.normalizeMesaFormConfig(config) : clone(DEFAULT_FORM_CONFIG);
+}
+
+function loadFormConfig() {
+  try {
+    return normalizeFormConfig(JSON.parse(localStorage.getItem(FORM_CONFIG_KEY)));
+  } catch (error) {
+    return normalizeFormConfig(DEFAULT_FORM_CONFIG);
+  }
+}
+
+function persistFormConfig() {
+  localStorage.setItem(FORM_CONFIG_KEY, JSON.stringify(formConfig));
 }
 
 function normalizeProfile(profile) {
@@ -119,6 +139,7 @@ function mapCloudTicket(row) {
     title: row.title || '',
     description: row.description || '',
     area: row.area || '',
+    subarea: row.subarea || '',
     type: row.type || '',
     priority: row.priority || '',
     module: row.module || '',
@@ -139,6 +160,7 @@ function ticketToCloudRow(ticket) {
     title: ticket.title,
     description: ticket.description,
     area: ticket.area,
+    subarea: ticket.subarea || '',
     type: ticket.type,
     priority: ticket.priority,
     module: ticket.module || '',
@@ -176,6 +198,29 @@ async function refreshCloudTickets({ quiet = false } = {}) {
   return true;
 }
 
+async function refreshCloudFormConfig({ quiet = false } = {}) {
+  if (!isCloudSession()) return false;
+  const { data, error } = await supabaseClient.from('form_config').select('config').eq('id', 1).maybeSingle();
+  if (error) {
+    console.error(error);
+    if (!quiet) showToast('No se pudo actualizar la configuración del formulario.');
+    return false;
+  }
+  if (data?.config) {
+    formConfig = normalizeFormConfig(data.config);
+    persistFormConfig();
+    renderFormOptions();
+  }
+  return true;
+}
+
+async function saveCloudFormConfig() {
+  if (!isCloudSession()) return true;
+  const { error } = await supabaseClient.from('form_config').upsert({ id: 1, config: formConfig }, { onConflict: 'id' });
+  if (error) throw error;
+  return true;
+}
+
 async function cloudInsertTicket(ticket) {
   if (!isCloudSession()) return ticket;
   const { data, error } = await supabaseClient.from('tickets').insert(ticketToCloudRow(ticket)).select('*').single();
@@ -204,7 +249,7 @@ function priorityClass(priority) {
 function visibleTickets() {
   const categoryFilter = activeFilter.startsWith('category:') ? activeFilter.slice(9) : null;
   return tickets.filter((ticket) => {
-    const matchesSearch = !searchTerm || [ticket.title, ticket.area, ticket.module, ticket.id].join(' ').toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = !searchTerm || [ticket.title, ticket.area, ticket.subarea, ticket.module, ticket.id].join(' ').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter = activeFilter === 'all'
       || activeFilter === 'high' && ticket.priority === 'Alta'
       || activeFilter === 'active' && ['review', 'qa'].includes(ticket.status)
@@ -225,7 +270,7 @@ function renderList() {
       <span class="ticket-frame" aria-hidden="true"></span>
       <span>
         <h3>${escapeHtml(ticket.title)}</h3>
-        <span class="ticket-meta"><span>${escapeHtml(ticket.area)}</span><span>${escapeHtml(statusLabels[ticket.status] || 'Sin estado')}</span></span>
+        <span class="ticket-meta"><span>${escapeHtml(ticket.area)}</span>${ticket.subarea ? `<span>${escapeHtml(ticket.subarea)}</span>` : ''}<span>${escapeHtml(statusLabels[ticket.status] || 'Sin estado')}</span></span>
       </span>
       <span class="ticket-side"><span class="ticket-code">${escapeHtml(ticket.id)}</span><span class="priority-mark ${priorityClass(ticket.priority)}" title="Prioridad ${escapeHtml(ticket.priority)}"></span></span>
     </button>
@@ -339,6 +384,7 @@ function fillForm(ticket) {
   $('#titleInput').value = ticket.title || '';
   $('#descriptionInput').value = ticket.description || '';
   $('#areaInput').value = ticket.area || '';
+  renderSubareaOptions(ticket.area || '', ticket.subarea || '');
   $('#typeInput').value = ticket.type || '';
   $('#priorityInput').value = ticket.priority || '';
   $('#moduleInput').value = ticket.module || '';
@@ -353,6 +399,7 @@ function clearForm() {
   $('#editorId').textContent = 'NUEVO';
   $('#saveLabel').textContent = 'Borrador sin guardar';
   $('#ticketForm').reset();
+  renderSubareaOptions('', '');
   $('#environmentInput').value = 'Local';
   updateStatus('new');
   updateReadiness();
@@ -381,7 +428,7 @@ function updateReadiness() {
 
 function getFormData() {
   return {
-    title: $('#titleInput').value.trim(), description: $('#descriptionInput').value.trim(), area: $('#areaInput').value, type: $('#typeInput').value, priority: $('#priorityInput').value,
+    title: $('#titleInput').value.trim(), description: $('#descriptionInput').value.trim(), area: $('#areaInput').value, subarea: $('#subareaInput').value, type: $('#typeInput').value, priority: $('#priorityInput').value,
     module: $('#moduleInput').value.trim(), requester: $('#requesterInput').value.trim(), environment: $('#environmentInput').value, acceptance: $('#acceptanceInput').value.trim()
   };
 }
@@ -464,7 +511,7 @@ function smartStructure() {
     $('#titleInput').focus();
     return;
   }
-  const category = (name) => currentProfile.categories.includes(name) ? name : currentProfile.categories[0] || '';
+  const category = (name) => formConfig.areas.some((area) => area.name === name) ? name : formConfig.areas[0]?.name || '';
   const area = text.includes('pos') || text.includes('caja') || text.includes('ticket') || text.includes('vale') || text.includes('pdv') || text.includes('compra') || text.includes('proveedor') || text.includes('inventario') || text.includes('recepc') ? category('Odoo') : text.includes('factura') || text.includes('contab') ? category('Administración') : text.includes('cliente') ? category('Clientes') : text.includes('automat') || text.includes('hoja') || text.includes('flujo') ? category('Automatización') : category('Desarrollo');
   const type = text.includes('bug') || text.includes('no ') || text.includes('error') || text.includes('falla') ? 'Bug' : 'Solicitud';
   $('#areaInput').value = area;
@@ -492,12 +539,40 @@ function applyFilter(filter) {
   renderList();
 }
 
+function findFormArea(areaName) {
+  return formConfig.areas.find((area) => area.name === areaName);
+}
+
+function renderSubareaOptions(areaName = $('#areaInput')?.value, selectedValue = $('#subareaInput')?.value) {
+  const field = $('#subareaField');
+  const select = $('#subareaInput');
+  if (!field || !select) return;
+  const area = findFormArea(areaName);
+  const subareas = area?.subareas || [];
+  field.classList.toggle('is-hidden', subareas.length === 0);
+  select.innerHTML = `<option value="">Seleccionar detalle</option>${subareas.map((subarea) => `<option value="${escapeHtml(subarea)}">${escapeHtml(subarea)}</option>`).join('')}`;
+  select.value = subareas.includes(selectedValue) ? selectedValue : '';
+}
+
+function renderFormOptions() {
+  const areaSelect = $('#areaInput');
+  const typeSelect = $('#typeInput');
+  const prioritySelect = $('#priorityInput');
+  if (!areaSelect || !typeSelect || !prioritySelect) return;
+  const selectedArea = areaSelect.value;
+  const selectedType = typeSelect.value;
+  const selectedPriority = prioritySelect.value;
+  areaSelect.innerHTML = `<option value="">Seleccionar área</option>${formConfig.areas.map((area) => `<option value="${escapeHtml(area.name)}">${escapeHtml(area.name)}</option>`).join('')}`;
+  typeSelect.innerHTML = `<option value="">Seleccionar tipo</option>${formConfig.types.map((type) => `<option value="${escapeHtml(type)}">${escapeHtml(type)}</option>`).join('')}`;
+  prioritySelect.innerHTML = `<option value="">Seleccionar prioridad</option>${formConfig.priorities.map((priority) => `<option value="${escapeHtml(priority)}">${escapeHtml(priority)}</option>`).join('')}`;
+  areaSelect.value = formConfig.areas.some((area) => area.name === selectedArea) ? selectedArea : '';
+  typeSelect.value = formConfig.types.includes(selectedType) ? selectedType : '';
+  prioritySelect.value = formConfig.priorities.includes(selectedPriority) ? selectedPriority : '';
+  renderSubareaOptions(areaSelect.value, $('#subareaInput')?.value || '');
+}
+
 function renderCategoryOptions() {
-  const select = $('#areaInput');
-  if (!currentProfile || !select) return;
-  const selected = select.value;
-  select.innerHTML = `<option value="">Seleccionar categoría</option>${currentProfile.categories.map((category) => `<option value="${escapeHtml(category)}">${escapeHtml(category)}</option>`).join('')}`;
-  select.value = currentProfile.categories.includes(selected) ? selected : '';
+  renderFormOptions();
 }
 
 function renderFilterChips() {
@@ -674,6 +749,7 @@ async function enterCloudWorkspace() {
     showAuthGate();
     return;
   }
+  await refreshCloudFormConfig({ quiet: true });
   renderCloudAuthPanel();
   if (currentProfile) {
     hideAuthGate();
@@ -730,6 +806,127 @@ function loginProfile(profileId) {
   hideAuthGate();
   initializeWorkspace();
   showToast(`${isCloudSession() ? 'Mesa sincronizada' : 'Bienvenido'}, ${currentProfile.name}.`);
+}
+
+function readFormConfigDraft() {
+  if (!formConfigDraft) return;
+  const rows = [...$('#formAreaList').querySelectorAll('[data-form-area-row]')];
+  formConfigDraft.areas = rows.map((row) => ({
+    name: row.querySelector('[data-form-area-name]').value.trim(),
+    subareas: row.querySelector('[data-form-area-subareas]').value.split(',').map((item) => item.trim()).filter(Boolean)
+  }));
+  formConfigDraft.types = $('#formTypesInput').value.split(',').map((item) => item.trim()).filter(Boolean);
+  formConfigDraft.priorities = $('#formPrioritiesInput').value.split(',').map((item) => item.trim()).filter(Boolean);
+}
+
+function renderFormAreaList() {
+  const list = $('#formAreaList');
+  if (!list || !formConfigDraft) return;
+  $('#formAreaCount').textContent = formConfigDraft.areas.length;
+  list.innerHTML = formConfigDraft.areas.map((area, index) => `
+    <div class="form-config-area-row" data-form-area-row>
+      <div class="form-config-area-fields">
+        <label class="field"><span>Área</span><input type="text" data-form-area-name maxlength="40" /></label>
+        <label class="field"><span>Detalles dependientes <small>(separados por coma)</small></span><input type="text" data-form-area-subareas placeholder="PDV, Inventario, Compras" /></label>
+      </div>
+      <button class="icon-button form-config-remove" type="button" data-remove-form-area="${index}" aria-label="Eliminar área">×</button>
+    </div>
+  `).join('');
+  list.querySelectorAll('[data-form-area-row]').forEach((row, index) => {
+    row.querySelector('[data-form-area-name]').value = formConfigDraft.areas[index].name;
+    row.querySelector('[data-form-area-subareas]').value = formConfigDraft.areas[index].subareas.join(', ');
+  });
+  list.querySelectorAll('[data-remove-form-area]').forEach((button) => button.addEventListener('click', () => removeFormArea(button.dataset.removeFormArea)));
+}
+
+function openFormConfigModal() {
+  if (!currentProfile) return;
+  formConfigDraft = clone(formConfig);
+  $('#formTypesInput').value = formConfigDraft.types.join(', ');
+  $('#formPrioritiesInput').value = formConfigDraft.priorities.join(', ');
+  $('#formConfigError').classList.add('is-hidden');
+  renderFormAreaList();
+  $('#formConfigModal').classList.remove('is-hidden');
+  $('#formConfigModal').setAttribute('aria-hidden', 'false');
+  setTimeout(() => $('#newFormAreaInput').focus(), 0);
+}
+
+function closeFormConfigModal() {
+  $('#formConfigModal').classList.add('is-hidden');
+  $('#formConfigModal').setAttribute('aria-hidden', 'true');
+  formConfigDraft = null;
+}
+
+function showFormConfigError(message) {
+  const error = $('#formConfigError');
+  error.textContent = message;
+  error.classList.remove('is-hidden');
+}
+
+function addFormArea() {
+  if (!formConfigDraft) return;
+  readFormConfigDraft();
+  const input = $('#newFormAreaInput');
+  const name = input.value.trim().replace(/\s+/g, ' ');
+  if (!name) return;
+  if (formConfigDraft.areas.some((area) => area.name.toLowerCase() === name.toLowerCase())) {
+    showFormConfigError('Esa área ya existe.');
+    return;
+  }
+  if (formConfigDraft.areas.length >= 40) {
+    showFormConfigError('Puedes tener hasta 40 áreas.');
+    return;
+  }
+  formConfigDraft.areas.push({ name, subareas: [] });
+  input.value = '';
+  $('#formConfigError').classList.add('is-hidden');
+  renderFormAreaList();
+  input.focus();
+}
+
+function removeFormArea(index) {
+  if (!formConfigDraft) return;
+  readFormConfigDraft();
+  if (formConfigDraft.areas.length <= 1) {
+    showFormConfigError('Conserva al menos un área.');
+    return;
+  }
+  formConfigDraft.areas.splice(Number(index), 1);
+  renderFormAreaList();
+}
+
+function resetFormConfig() {
+  formConfigDraft = clone(DEFAULT_FORM_CONFIG);
+  $('#formTypesInput').value = formConfigDraft.types.join(', ');
+  $('#formPrioritiesInput').value = formConfigDraft.priorities.join(', ');
+  $('#formConfigError').classList.add('is-hidden');
+  renderFormAreaList();
+}
+
+async function saveFormConfig(event) {
+  event.preventDefault();
+  if (!formConfigDraft) return;
+  readFormConfigDraft();
+  const normalized = normalizeFormConfig(formConfigDraft);
+  if (!normalized.areas.length || !normalized.types.length || !normalized.priorities.length) {
+    showFormConfigError('Necesitas al menos un área, un tipo y una prioridad.');
+    return;
+  }
+  const saveButton = $('#formConfigForm button[type="submit"]');
+  saveButton.disabled = true;
+  try {
+    formConfig = normalized;
+    persistFormConfig();
+    await saveCloudFormConfig();
+    renderFormOptions();
+    closeFormConfigModal();
+    showToast(isCloudSession() ? 'Formulario público sincronizado.' : 'Formulario público actualizado en este navegador.');
+  } catch (error) {
+    console.error(error);
+    showFormConfigError('No se pudo sincronizar la configuración. Revisa tu sesión e inténtalo de nuevo.');
+  } finally {
+    saveButton.disabled = false;
+  }
 }
 
 function openProfileModal() {
@@ -873,6 +1070,7 @@ $('#newTicketButton').addEventListener('click', openNewTicket);
 $('#homeNewTicketButton').addEventListener('click', openNewTicket);
 $('#homeSettingsButton').addEventListener('click', openProfileModal);
 $('#homeProfileButton').addEventListener('click', openProfileModal);
+$('#formConfigButton').addEventListener('click', openFormConfigModal);
 $('#discardButton').addEventListener('click', () => { if (isNewTicket) { if (tickets[0]) selectTicket(tickets[0].id); else clearForm(); } else selectTicket(selectedId); showToast('Cambios descartados.'); });
 $('#searchInput').addEventListener('input', (event) => { searchTerm = event.target.value; renderList(); });
 $('#refreshButton').addEventListener('click', () => { if (isCloudSession()) void refreshCloudTickets(); else { renderList(); showToast('Cola actualizada.'); } });
@@ -886,6 +1084,12 @@ $('#addCategoryButton').addEventListener('click', addCategory);
 $('#categoryInput').addEventListener('keydown', (event) => { if (event.key === 'Enter') { event.preventDefault(); addCategory(); } });
 $('#closeProfileButton').addEventListener('click', closeProfileModal);
 $('#logoutButton').addEventListener('click', logoutProfile);
+$('#closeFormConfigButton').addEventListener('click', closeFormConfigModal);
+$('#formConfigForm').addEventListener('submit', saveFormConfig);
+$('#addFormAreaButton').addEventListener('click', addFormArea);
+$('#newFormAreaInput').addEventListener('keydown', (event) => { if (event.key === 'Enter') { event.preventDefault(); addFormArea(); } });
+$('#resetFormConfigButton').addEventListener('click', resetFormConfig);
+$('#areaInput').addEventListener('change', () => renderSubareaOptions($('#areaInput').value, ''));
 $('#cloudAuthForm')?.addEventListener('submit', submitCloudAuth);
 $('#cloudAuthToggle')?.addEventListener('click', () => {
   cloudAuthMode = cloudAuthMode === 'login' ? 'signup' : 'login';
@@ -899,11 +1103,12 @@ document.addEventListener('click', (event) => {
   const filterButton = event.target.closest('[data-filter]');
   if (filterButton) applyFilter(filterButton.dataset.filter);
   if (event.target.matches('[data-close-profile]')) closeProfileModal();
+  if (event.target.matches('[data-close-form-config]')) closeFormConfigModal();
 });
 $$('#ticketForm input, #ticketForm textarea, #ticketForm select').forEach((input) => input.addEventListener('input', () => { updateReadiness(); hideFormError(); }));
 document.addEventListener('keydown', (event) => {
   if (event.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') { event.preventDefault(); $('#searchInput').focus(); }
-  if (event.key === 'Escape') closeProfileModal();
+  if (event.key === 'Escape') { closeProfileModal(); closeFormConfigModal(); }
 });
 window.addEventListener('resize', updateScrollHint);
 

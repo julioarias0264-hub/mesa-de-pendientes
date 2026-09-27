@@ -20,6 +20,8 @@ La app se sirve como sitio estático y carga el cliente de Supabase desde CDN. E
 2. En **Authentication → Users**, crea el usuario que utilizará Julio para entrar a la mesa.
 3. La mesa principal usa `index.html` y el formulario público para compartir es `solicitar.html`.
 
+Desde **Inicio → Configurar formulario público** puedes editar las áreas, sus detalles dependientes, tipos y prioridades. Por ejemplo, al elegir `Odoo` el formulario puede mostrar `PDV`, `Inventario`, `Ventas` y `Compras`.
+
 La clave `publishable` está en `supabase-config.js` y es apta para el navegador. Nunca coloques una clave `secret` o `service_role` en este repositorio.
 
 ## Perfiles y personalización

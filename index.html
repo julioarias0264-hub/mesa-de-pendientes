@@ -129,6 +129,7 @@
                   <div class="home-panel-heading compact"><div><span class="home-section-label">ORDEN PERSONAL</span><h2>Mis categorías</h2></div><button class="icon-button" id="homeProfileButton" type="button" aria-label="Editar perfil">↗</button></div>
                   <div class="home-category-list" id="homeCategoryList"></div>
                   <button class="button button-quiet home-settings-button" id="homeSettingsButton" type="button">Personalizar mesa</button>
+                  <button class="button button-quiet home-settings-button" id="formConfigButton" type="button">Configurar formulario público</button>
                 </div>
               </aside>
             </div>
@@ -213,36 +214,24 @@
                     <span>Área de trabajo <em>*</em></span>
                     <select id="areaInput" name="area" required>
                       <option value="">Seleccionar área</option>
-                      <option>Clientes</option>
-                      <option>Administración</option>
-                      <option>Desarrollo</option>
-                      <option>Automatización</option>
-                      <option>Operación</option>
-                      <option>Personal</option>
-                      <option>Documentación</option>
-                      <option>Odoo</option>
-                      <option>Otro</option>
+                    </select>
+                  </label>
+                  <label class="field is-hidden" id="subareaField">
+                    <span>Área específica</span>
+                    <select id="subareaInput" name="subarea">
+                      <option value="">Seleccionar detalle</option>
                     </select>
                   </label>
                   <label class="field">
                     <span>Tipo de solicitud <em>*</em></span>
                     <select id="typeInput" name="type" required>
                       <option value="">Seleccionar tipo</option>
-                      <option>Bug</option>
-                      <option>Mejora</option>
-                      <option>Solicitud</option>
-                      <option>Seguimiento</option>
-                      <option>Configuración</option>
-                      <option>Documentación</option>
                     </select>
                   </label>
                   <label class="field">
                     <span>Prioridad <em>*</em></span>
                     <select id="priorityInput" name="priority" required>
                       <option value="">Seleccionar prioridad</option>
-                      <option>Alta</option>
-                      <option>Media</option>
-                      <option>Baja</option>
                     </select>
                   </label>
                   <label class="field">
@@ -413,8 +402,32 @@
       </section>
     </div>
 
+    <div class="modal-shell is-hidden" id="formConfigModal" aria-hidden="true">
+      <div class="modal-backdrop" data-close-form-config></div>
+      <section class="profile-dialog form-config-dialog" role="dialog" aria-modal="true" aria-labelledby="formConfigTitle">
+        <div class="dialog-header">
+          <div>
+            <p class="auth-kicker">FORMULARIO PÚBLICO</p>
+            <h2 id="formConfigTitle">Configura las opciones</h2>
+            <p class="dialog-copy">Define las áreas que verá tu jefa y los detalles que aparecen según cada área.</p>
+          </div>
+          <button class="icon-button dialog-close" id="closeFormConfigButton" type="button" aria-label="Cerrar configuración">×</button>
+        </div>
+        <form class="form-config-form" id="formConfigForm">
+          <div class="form-config-section-heading"><div><span class="field-label">ÁREAS Y DETALLES</span><small>Ejemplo: Odoo → PDV, Inventario, Compras.</small></div><span class="category-count" id="formAreaCount">0</span></div>
+          <div class="form-config-area-list" id="formAreaList"></div>
+          <div class="form-config-add-row"><input id="newFormAreaInput" type="text" maxlength="40" placeholder="Nueva área, por ejemplo Recursos humanos" /><button class="button button-quiet" id="addFormAreaButton" type="button">Añadir área</button></div>
+          <label class="field"><span>Tipos de solicitud <small>(separados por coma)</small></span><input id="formTypesInput" type="text" placeholder="Solicitud, Bug, Mejora" /></label>
+          <label class="field"><span>Prioridades <small>(separadas por coma)</small></span><input id="formPrioritiesInput" type="text" placeholder="Media, Alta, Baja" /></label>
+          <p class="form-error is-hidden" id="formConfigError" role="alert"></p>
+          <div class="dialog-footer"><button class="button button-quiet" id="resetFormConfigButton" type="button">Restaurar ejemplos</button><button class="button button-primary" type="submit">Guardar formulario</button></div>
+        </form>
+      </section>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase-config.js"></script>
+    <script src="form-config.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

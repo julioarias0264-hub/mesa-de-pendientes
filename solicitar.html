@@ -32,6 +32,7 @@
             <label class="public-field public-field-span-2"><span>Descríbelo con detalle <em>*</em></span><textarea name="description" rows="5" placeholder="¿Qué sucede ahora y qué resultado esperas?" required></textarea></label>
             <div class="public-field-grid">
               <label class="public-field"><span>Área <em>*</em></span><select name="area" required><option value="">Selecciona una opción</option><option>Odoo</option><option>Administración</option><option>Clientes</option><option>Operación</option><option>Automatización</option><option>Desarrollo</option><option>Otro</option></select></label>
+              <label class="public-field is-hidden" id="publicSubareaField"><span>Detalle del área</span><select name="subarea" id="publicSubareaInput"><option value="">Selecciona primero un área</option></select></label>
               <label class="public-field"><span>Tipo <em>*</em></span><select name="type" required><option value="">Selecciona una opción</option><option>Solicitud</option><option>Bug</option><option>Mejora</option><option>Seguimiento</option><option>Configuración</option></select></label>
               <label class="public-field"><span>Prioridad <em>*</em></span><select name="priority"><option>Media</option><option>Alta</option><option>Baja</option></select></label>
               <label class="public-field"><span>Proyecto o herramienta</span><input name="module" type="text" placeholder="Ej. Odoo, ventas o documento" /></label>
@@ -51,6 +52,7 @@
     </main>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase-config.js"></script>
+    <script src="form-config.js"></script>
     <script src="public-form.js"></script>
   </body>
 </html>
