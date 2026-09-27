@@ -22,6 +22,7 @@ let currentProfile = profiles.find((profile) => profile.id === activeProfileId) 
 let tickets = currentProfile ? loadTicketsForProfile(currentProfile.id) : [];
 let selectedId = tickets[0]?.id || null;
 let activeFilter = 'all';
+let activeView = 'home';
 let searchTerm = '';
 let isNewTicket = false;
 let onboardingColor = COLOR_OPTIONS[0].value;
@@ -131,6 +132,74 @@ function renderList() {
   updateScrollHint();
 }
 
+function renderHome() {
+  if (!currentProfile) return;
+  $('#homeName').textContent = currentProfile.name;
+  $('#homeDate').textContent = $('#railDate').textContent;
+  $('#homeTotal').textContent = tickets.length;
+  $('#homeActive').textContent = tickets.filter((ticket) => ['review', 'qa'].includes(ticket.status)).length;
+  $('#homeDone').textContent = tickets.filter((ticket) => ticket.status === 'done').length;
+
+  const recent = tickets.slice(0, 4);
+  $('#homeRecentList').innerHTML = recent.length ? recent.map((ticket) => `
+    <button class="home-recent-item" type="button" data-ticket-id="${escapeHtml(ticket.id)}">
+      <span class="home-recent-dot" aria-hidden="true"></span>
+      <span><strong>${escapeHtml(ticket.title)}</strong><small>${escapeHtml(ticket.area)} · ${escapeHtml(statusLabels[ticket.status] || 'Sin estado')}</small></span>
+      <span class="home-recent-id">${escapeHtml(ticket.id)}</span>
+    </button>
+  `).join('') : `
+    <div class="home-recent-empty">
+      <span><strong>Aún no hay movimientos.</strong><span>Tu primer ticket puede empezar aquí.</span></span>
+      <button class="button button-quiet" type="button" data-view="receiving">Crear el primero</button>
+    </div>
+  `;
+  $('#homeRecentList').querySelectorAll('[data-ticket-id]').forEach((item) => item.addEventListener('click', () => openTicket(item.dataset.ticketId)));
+
+  const categoryCounts = currentProfile.categories.map((category) => ({ category, count: tickets.filter((ticket) => ticket.area === category).length }));
+  $('#homeCategoryList').innerHTML = categoryCounts.map(({ category, count }) => `<span class="home-category-chip">${escapeHtml(category)}<strong>${count}</strong></span>`).join('');
+}
+
+function renderSecondaryList(view) {
+  const isHistory = view === 'history';
+  const items = tickets.filter((ticket) => isHistory ? ticket.status === 'done' : ['review', 'qa'].includes(ticket.status));
+  const list = $(`#${isHistory ? 'historyTicketList' : 'activeTicketList'}`);
+  const empty = $(`#${isHistory ? 'historyEmpty' : 'activeEmpty'}`);
+  const total = $(`#${isHistory ? 'historyViewTotal' : 'activeViewTotal'}`);
+  total.textContent = items.length;
+  list.innerHTML = items.map((ticket) => `
+    <button class="secondary-ticket" type="button" data-ticket-id="${escapeHtml(ticket.id)}">
+      <span class="secondary-ticket-dot" aria-hidden="true"></span>
+      <span><strong>${escapeHtml(ticket.title)}</strong><small>${escapeHtml(ticket.area)} · ${escapeHtml(statusLabels[ticket.status] || 'Sin estado')}</small></span>
+      <span class="secondary-ticket-code">${escapeHtml(ticket.id)}</span>
+    </button>
+  `).join('');
+  empty.classList.toggle('is-hidden', items.length > 0);
+  list.classList.toggle('is-hidden', items.length === 0);
+  list.querySelectorAll('[data-ticket-id]').forEach((item) => item.addEventListener('click', () => openTicket(item.dataset.ticketId)));
+}
+
+function openTicket(id) {
+  setView('receiving');
+  selectTicket(id);
+}
+
+function setView(view) {
+  if (!currentProfile) return;
+  activeView = view;
+  $$('.app-view').forEach((section) => section.classList.toggle('is-hidden', section.id !== `${view}View`));
+  $$('[data-view]').forEach((button) => {
+    const selected = button.dataset.view === view;
+    if (button.classList.contains('topnav-link')) {
+      button.classList.toggle('is-active', selected);
+      button.setAttribute('aria-pressed', String(selected));
+    }
+  });
+  if (view === 'home') renderHome();
+  if (view === 'active' || view === 'history') renderSecondaryList(view);
+  if (view === 'receiving') renderList();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
 function updateCounts() {
   $('#railTotal').textContent = tickets.length;
   $('#allCount').textContent = `${tickets.length} ticket${tickets.length === 1 ? '' : 's'}`;
@@ -141,6 +210,7 @@ function updateCounts() {
   });
   const activeCount = tickets.filter((ticket) => ['review', 'qa'].includes(ticket.status)).length;
   $('#activeCount').textContent = activeCount;
+  renderHome();
 }
 
 function updateScrollHint() {
@@ -280,6 +350,7 @@ function smartStructure() {
 }
 
 function applyFilter(filter) {
+  setView('receiving');
   activeFilter = filter;
   const firstVisible = visibleTickets()[0];
   if (firstVisible && firstVisible.id !== selectedId) {
@@ -366,6 +437,7 @@ function initializeWorkspace() {
     $('#editorTitle').textContent = 'Recibir ticket';
   }
   renderList();
+  setView('home');
 }
 
 function renderProfileList() {
@@ -549,14 +621,28 @@ function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
 }
 
+function openNewTicket() {
+  setView('receiving');
+  isNewTicket = true;
+  selectedId = null;
+  clearForm();
+  renderList();
+  $('#editorTitle').textContent = 'Recibir ticket';
+  $('#titleInput').focus();
+}
+
 $('#ticketForm').addEventListener('submit', saveTicket);
 $('#advanceStatusButton').addEventListener('click', advanceStatus);
 $('#structureButton').addEventListener('click', smartStructure);
-$('#newTicketButton').addEventListener('click', () => { isNewTicket = true; selectedId = null; clearForm(); renderList(); $('#editorTitle').textContent = 'Recibir ticket'; $('#titleInput').focus(); });
+$('#newTicketButton').addEventListener('click', openNewTicket);
+$('#homeNewTicketButton').addEventListener('click', openNewTicket);
+$('#homeSettingsButton').addEventListener('click', openProfileModal);
+$('#homeProfileButton').addEventListener('click', openProfileModal);
 $('#discardButton').addEventListener('click', () => { if (isNewTicket) { if (tickets[0]) selectTicket(tickets[0].id); else clearForm(); } else selectTicket(selectedId); showToast('Cambios descartados.'); });
 $('#searchInput').addEventListener('input', (event) => { searchTerm = event.target.value; renderList(); });
 $('#refreshButton').addEventListener('click', () => { renderList(); showToast('Cola actualizada.'); });
 $('#profileButton').addEventListener('click', openProfileModal);
+$('#homeLink').addEventListener('click', (event) => { event.preventDefault(); setView('home'); });
 $('#createProfileButton').addEventListener('click', showOnboarding);
 $('#backToProfilesButton').addEventListener('click', showProfilePicker);
 $('#onboardingForm').addEventListener('submit', createProfile);
@@ -566,6 +652,8 @@ $('#categoryInput').addEventListener('keydown', (event) => { if (event.key === '
 $('#closeProfileButton').addEventListener('click', closeProfileModal);
 $('#logoutButton').addEventListener('click', logoutProfile);
 document.addEventListener('click', (event) => {
+  const viewButton = event.target.closest('[data-view]');
+  if (viewButton) setView(viewButton.dataset.view);
   const filterButton = event.target.closest('[data-filter]');
   if (filterButton) applyFilter(filterButton.dataset.filter);
   if (event.target.matches('[data-close-profile]')) closeProfileModal();

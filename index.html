@@ -10,7 +10,7 @@
   <body>
     <div class="app-shell">
       <header class="topbar">
-        <a class="brand" href="#top" aria-label="Mesa de tickets, inicio">
+        <a class="brand" href="#home" id="homeLink" aria-label="Mesa de tickets, inicio">
           <span class="brand-mark" id="brandMark">J</span>
           <span>
             <strong id="brandName">Mesa de tickets</strong>
@@ -19,9 +19,10 @@
         </a>
 
         <nav class="topnav" aria-label="Navegación principal">
-          <button class="topnav-link is-active" type="button" data-filter="all" aria-pressed="true">Recepción</button>
-          <button class="topnav-link" type="button" data-filter="active" aria-pressed="false">En curso <span class="nav-count" id="activeCount">7</span></button>
-          <button class="topnav-link" type="button" data-filter="history" aria-pressed="false">Historial</button>
+          <button class="topnav-link is-active" type="button" data-view="home" aria-pressed="true">Inicio</button>
+          <button class="topnav-link" type="button" data-view="receiving" aria-pressed="false">Recepción</button>
+          <button class="topnav-link" type="button" data-view="active" aria-pressed="false">En curso <span class="nav-count" id="activeCount">0</span></button>
+          <button class="topnav-link" type="button" data-view="history" aria-pressed="false">Historial</button>
         </nav>
 
         <div class="topbar-actions">
@@ -66,7 +67,73 @@
           </div>
         </aside>
 
-        <main class="main-content" id="recepcion">
+        <main class="main-content" id="appMain">
+          <section class="app-view home-view" id="homeView">
+            <div class="home-hero">
+              <div class="home-hero-copy">
+                <span class="home-eyebrow">ESPACIO PERSONAL</span>
+                <h1>Hola, <span id="homeName">Julio</span><span class="home-period">.</span></h1>
+                <p>Tu mesa para capturar solicitudes, ordenar pendientes y dejar claro qué sigue.</p>
+              </div>
+              <div class="home-hero-action">
+                <span class="home-date" id="homeDate">27 SEP 2026</span>
+                <button class="button button-primary" id="homeNewTicketButton" type="button">
+                  <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+                  Recibir un ticket
+                </button>
+              </div>
+            </div>
+
+            <div class="home-dashboard">
+              <section class="home-focus" aria-labelledby="homeFocusTitle">
+                <div class="home-panel-heading">
+                  <div>
+                    <span class="home-section-label">QUÉ NECESITAS HACER</span>
+                    <h2 id="homeFocusTitle">Elige tu siguiente movimiento</h2>
+                  </div>
+                  <span class="home-panel-mark">01—</span>
+                </div>
+                <div class="home-actions-row">
+                  <button class="home-action" type="button" data-view="receiving">
+                    <span class="home-action-number">01</span>
+                    <span><strong>Recibir una solicitud</strong><small>Captura contexto y criterios de aceptación.</small></span>
+                    <span class="home-action-arrow">↗</span>
+                  </button>
+                  <button class="home-action" type="button" data-view="active">
+                    <span class="home-action-number">02</span>
+                    <span><strong>Ver trabajo en curso</strong><small>Revisa lo que ya tiene un siguiente paso.</small></span>
+                    <span class="home-action-arrow">↗</span>
+                  </button>
+                  <button class="home-action" type="button" data-view="history">
+                    <span class="home-action-number">03</span>
+                    <span><strong>Consultar historial</strong><small>Encuentra lo que ya se cerró.</small></span>
+                    <span class="home-action-arrow">↗</span>
+                  </button>
+                </div>
+
+                <div class="home-recent-heading">
+                  <div><span class="home-section-label">ÚLTIMOS MOVIMIENTOS</span><h2>Tu mesa hoy</h2></div>
+                  <button class="text-button" type="button" data-view="receiving">Abrir recepción <span>→</span></button>
+                </div>
+                <div class="home-recent-list" id="homeRecentList"></div>
+              </section>
+
+              <aside class="home-aside">
+                <div class="home-ledger">
+                  <div class="home-ledger-line"><span>En la mesa</span><strong id="homeTotal">0</strong></div>
+                  <div class="home-ledger-line"><span>En curso</span><strong id="homeActive">0</strong></div>
+                  <div class="home-ledger-line"><span>Cerrados</span><strong id="homeDone">0</strong></div>
+                </div>
+                <div class="home-category-panel">
+                  <div class="home-panel-heading compact"><div><span class="home-section-label">ORDEN PERSONAL</span><h2>Mis categorías</h2></div><button class="icon-button" id="homeProfileButton" type="button" aria-label="Editar perfil">↗</button></div>
+                  <div class="home-category-list" id="homeCategoryList"></div>
+                  <button class="button button-quiet home-settings-button" id="homeSettingsButton" type="button">Personalizar mesa</button>
+                </div>
+              </aside>
+            </div>
+          </section>
+
+          <div class="app-view is-hidden" id="receivingView">
           <section class="page-heading">
             <div>
               <h1>Recepción de tickets</h1>
@@ -216,6 +283,26 @@
                 <p class="form-error is-hidden" id="formError" role="alert"></p>
               </form>
             </section>
+          </section>
+          </div>
+
+          <section class="app-view secondary-view is-hidden" id="activeView" aria-labelledby="activeViewTitle">
+            <div class="secondary-heading">
+              <div><span class="home-eyebrow">TRABAJO EN MOVIMIENTO</span><h1 id="activeViewTitle">En curso</h1><p>Lo que requiere una decisión, revisión o siguiente paso.</p></div>
+              <button class="button button-primary" type="button" data-view="receiving">Recibir ticket</button>
+            </div>
+            <div class="secondary-layout">
+              <section class="secondary-list-panel"><div class="secondary-panel-heading"><div><span class="home-section-label">COLA ACTIVA</span><h2><span id="activeViewTotal">0</span> tickets en movimiento</h2></div><span class="home-panel-mark">02—</span></div><div class="secondary-ticket-list" id="activeTicketList"></div><div class="secondary-empty is-hidden" id="activeEmpty"><strong>Tu mesa está despejada.</strong><span>No hay tickets en curso todavía.</span><button class="text-button" type="button" data-view="receiving">Recibir el primero →</button></div></section>
+              <aside class="secondary-note"><span class="home-section-label">LECTURA RÁPIDA</span><h2>Primero lo que necesita atención.</h2><p>Marca un ticket como listo para avanzar desde su ficha de recepción.</p><div class="note-rule"></div><span class="note-foot">Estado · revisión / listo</span></aside>
+            </div>
+          </section>
+
+          <section class="app-view secondary-view is-hidden" id="historyView" aria-labelledby="historyViewTitle">
+            <div class="secondary-heading">
+              <div><span class="home-eyebrow">MEMORIA DE LA MESA</span><h1 id="historyViewTitle">Historial</h1><p>Lo que ya cruzó la mesa y puede servirte como referencia.</p></div>
+              <button class="button button-primary" type="button" data-view="receiving">Recibir ticket</button>
+            </div>
+            <div class="secondary-layout"><section class="secondary-list-panel"><div class="secondary-panel-heading"><div><span class="home-section-label">TICKETS CERRADOS</span><h2><span id="historyViewTotal">0</span> tickets guardados</h2></div><span class="home-panel-mark">03—</span></div><div class="secondary-ticket-list" id="historyTicketList"></div><div class="secondary-empty is-hidden" id="historyEmpty"><strong>Aún no hay historial.</strong><span>Los tickets cerrados aparecerán aquí.</span></div></section><aside class="secondary-note"><span class="home-section-label">PUNTO DE PARTIDA</span><h2>Un historial útil cuenta qué se resolvió.</h2><p>Conserva contexto y criterios para no reconstruir decisiones desde cero.</p><div class="note-rule"></div><span class="note-foot">Archivo · local</span></aside></div>
           </section>
         </main>
       </div>

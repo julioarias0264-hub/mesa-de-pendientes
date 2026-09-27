@@ -19,3 +19,10 @@ La app no necesita build ni dependencias adicionales. Abre con la cola vacía; l
 La primera vez puedes crear un perfil local con nombre, iniciales y color. Desde el avatar puedes cambiar esos datos, crear o quitar categorías y cambiar de perfil. Cada perfil conserva sus propios tickets y preferencias en el navegador.
 
 Este acceso es local para el MVP de GitHub Pages: no es una autenticación con contraseña ni sincroniza información entre dispositivos. Para eso habría que conectar un backend o un proveedor de identidad.
+
+## Pantallas principales
+
+- **Inicio:** bienvenida, resumen de la mesa, accesos rápidos y categorías.
+- **Recepción:** captura y edición detallada de tickets.
+- **En curso:** solicitudes que requieren revisión o un siguiente paso.
+- **Historial:** tickets cerrados y contexto de referencia.
