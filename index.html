@@ -419,6 +419,15 @@
           <div class="form-config-add-row"><input id="newFormAreaInput" type="text" maxlength="40" placeholder="Nueva área, por ejemplo Recursos humanos" /><button class="button button-quiet" id="addFormAreaButton" type="button">Añadir área</button></div>
           <label class="field"><span>Tipos de solicitud <small>(separados por coma)</small></span><input id="formTypesInput" type="text" placeholder="Solicitud, Bug, Mejora" /></label>
           <label class="field"><span>Prioridades <small>(separadas por coma)</small></span><input id="formPrioritiesInput" type="text" placeholder="Media, Alta, Baja" /></label>
+          <div class="form-config-theme">
+            <div class="form-config-section-heading"><div><span class="field-label">APARIENCIA DEL FORMULARIO</span><small>Por defecto usa el estilo activo de tu mesa.</small></div></div>
+            <label class="field"><span>Modo visual</span><select id="formThemeModeInput"><option value="workspace">Usar apariencia actual de mi mesa</option><option value="custom">Personalizar el formulario</option></select></label>
+            <div class="form-config-theme-fields is-hidden" id="formCustomThemeFields">
+              <label class="field"><span>Color principal</span><input id="formThemeColorInput" type="color" /></label>
+              <label class="field"><span>Iniciales</span><input id="formThemeInitialsInput" type="text" maxlength="3" placeholder="J" /></label>
+              <label class="field"><span>Nombre del espacio</span><input id="formThemeWorkspaceNameInput" type="text" maxlength="40" placeholder="Julio" /></label>
+            </div>
+          </div>
           <p class="form-error is-hidden" id="formConfigError" role="alert"></p>
           <div class="dialog-footer"><button class="button button-quiet" id="resetFormConfigButton" type="button">Restaurar ejemplos</button><button class="button button-primary" type="submit">Guardar formulario</button></div>
         </form>

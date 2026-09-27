@@ -8,7 +8,8 @@ window.MESA_FORM_DEFAULTS = {
     { name: 'Desarrollo', subareas: ['Frontend', 'Backend', 'QA'] }
   ],
   types: ['Solicitud', 'Bug', 'Mejora', 'Seguimiento', 'Configuración', 'Documentación'],
-  priorities: ['Media', 'Alta', 'Baja']
+  priorities: ['Media', 'Alta', 'Baja'],
+  theme: { mode: 'workspace', accent: '#f06a3c', hot: '#ff8051', ink: '#9c361b', initials: 'J', workspaceName: 'Julio' }
 };
 
 window.normalizeMesaFormConfig = function normalizeMesaFormConfig(config) {
@@ -27,6 +28,14 @@ window.normalizeMesaFormConfig = function normalizeMesaFormConfig(config) {
   return {
     areas: areas.length ? areas : JSON.parse(JSON.stringify(defaults.areas)),
     types: list(config?.types, defaults.types),
-    priorities: list(config?.priorities, defaults.priorities)
+    priorities: list(config?.priorities, defaults.priorities),
+    theme: {
+      mode: config?.theme?.mode === 'custom' ? 'custom' : 'workspace',
+      accent: /^#[0-9a-f]{6}$/i.test(config?.theme?.accent || '') ? config.theme.accent : defaults.theme.accent,
+      hot: /^#[0-9a-f]{6}$/i.test(config?.theme?.hot || '') ? config.theme.hot : defaults.theme.hot,
+      ink: /^#[0-9a-f]{6}$/i.test(config?.theme?.ink || '') ? config.theme.ink : defaults.theme.ink,
+      initials: String(config?.theme?.initials || defaults.theme.initials).replace(/[^a-z0-9]/gi, '').toUpperCase().slice(0, 3) || defaults.theme.initials,
+      workspaceName: String(config?.theme?.workspaceName || defaults.theme.workspaceName).trim().slice(0, 40) || defaults.theme.workspaceName
+    }
   };
 };

@@ -16,7 +16,7 @@ const DEFAULT_CATEGORIES = ['Clientes', 'Administración', 'Desarrollo', 'Automa
 const seedTickets = [];
 const statusLabels = { new: 'Nuevo', review: 'En revisión', qa: 'Listo para avanzar', blocked: 'Bloqueado', done: 'Cerrado' };
 const FORM_CONFIG_KEY = 'julio-form-config-v1';
-const DEFAULT_FORM_CONFIG = window.MESA_FORM_DEFAULTS || { areas: [{ name: 'Odoo', subareas: ['PDV', 'Inventario', 'Ventas', 'Compras'] }], types: ['Solicitud', 'Bug', 'Mejora'], priorities: ['Media', 'Alta', 'Baja'] };
+const DEFAULT_FORM_CONFIG = window.MESA_FORM_DEFAULTS || { areas: [{ name: 'Odoo', subareas: ['PDV', 'Inventario', 'Ventas', 'Compras'] }], types: ['Solicitud', 'Bug', 'Mejora'], priorities: ['Media', 'Alta', 'Baja'], theme: { mode: 'workspace', accent: '#f06a3c', hot: '#ff8051', ink: '#9c361b', initials: 'J', workspaceName: 'Julio' } };
 const supabaseConfig = window.MESA_SUPABASE || {};
 const supabaseClient = window.supabase?.createClient && supabaseConfig.url && supabaseConfig.publishableKey
   ? window.supabase.createClient(supabaseConfig.url, supabaseConfig.publishableKey)
@@ -219,6 +219,25 @@ async function saveCloudFormConfig() {
   const { error } = await supabaseClient.from('form_config').upsert({ id: 1, config: formConfig }, { onConflict: 'id' });
   if (error) throw error;
   return true;
+}
+
+function getWorkspaceTheme() {
+  const color = colorOption(currentProfile?.color);
+  return {
+    mode: 'workspace',
+    accent: color.value,
+    hot: color.hot,
+    ink: color.ink,
+    initials: currentProfile?.initials || 'J',
+    workspaceName: currentProfile?.name || 'Julio'
+  };
+}
+
+function syncFormThemeFromWorkspace({ remote = false } = {}) {
+  if (!currentProfile || formConfig.theme?.mode === 'custom') return;
+  formConfig.theme = getWorkspaceTheme();
+  persistFormConfig();
+  if (remote) void saveCloudFormConfig().catch((error) => console.error('No se pudo sincronizar la apariencia del formulario.', error));
 }
 
 async function cloudInsertTicket(ticket) {
@@ -632,6 +651,7 @@ function updateProfileSummary() {
 
 function initializeWorkspace() {
   applyProfileTheme();
+  syncFormThemeFromWorkspace({ remote: isCloudSession() });
   updateProfileSummary();
   renderCategoryOptions();
   renderFilterChips();
@@ -745,7 +765,7 @@ async function enterCloudWorkspace() {
   const synced = await refreshCloudTickets({ quiet: true });
   if (!synced) {
     await supabaseClient.auth.signOut();
-    setCloudAuthStatus('Falta ejecutar el esquema SQL en Supabase antes de entrar.', false);
+    setCloudAuthStatus('Falta crear las tablas de la mesa. Ejecuta supabase-schema.sql completo en Supabase → SQL Editor y vuelve a intentarlo.', false);
     showAuthGate();
     return;
   }
@@ -817,6 +837,30 @@ function readFormConfigDraft() {
   }));
   formConfigDraft.types = $('#formTypesInput').value.split(',').map((item) => item.trim()).filter(Boolean);
   formConfigDraft.priorities = $('#formPrioritiesInput').value.split(',').map((item) => item.trim()).filter(Boolean);
+  const mode = $('#formThemeModeInput').value;
+  const workspaceTheme = getWorkspaceTheme();
+  formConfigDraft.theme = mode === 'workspace'
+    ? workspaceTheme
+    : {
+      mode: 'custom',
+      accent: $('#formThemeColorInput').value,
+      hot: $('#formThemeColorInput').value,
+      ink: $('#formThemeColorInput').value,
+      initials: $('#formThemeInitialsInput').value.trim(),
+      workspaceName: $('#formThemeWorkspaceNameInput').value.trim()
+    };
+}
+
+function renderFormThemeFields() {
+  const mode = $('#formThemeModeInput').value;
+  const customFields = $('#formCustomThemeFields');
+  if (!customFields) return;
+  customFields.classList.toggle('is-hidden', mode !== 'custom');
+  const disabled = mode !== 'custom';
+  ['#formThemeColorInput', '#formThemeInitialsInput', '#formThemeWorkspaceNameInput'].forEach((selector) => {
+    const input = $(selector);
+    if (input) input.disabled = disabled;
+  });
 }
 
 function renderFormAreaList() {
@@ -844,8 +888,13 @@ function openFormConfigModal() {
   formConfigDraft = clone(formConfig);
   $('#formTypesInput').value = formConfigDraft.types.join(', ');
   $('#formPrioritiesInput').value = formConfigDraft.priorities.join(', ');
+  $('#formThemeModeInput').value = formConfigDraft.theme.mode;
+  $('#formThemeColorInput').value = formConfigDraft.theme.accent;
+  $('#formThemeInitialsInput').value = formConfigDraft.theme.initials;
+  $('#formThemeWorkspaceNameInput').value = formConfigDraft.theme.workspaceName;
   $('#formConfigError').classList.add('is-hidden');
   renderFormAreaList();
+  renderFormThemeFields();
   $('#formConfigModal').classList.remove('is-hidden');
   $('#formConfigModal').setAttribute('aria-hidden', 'false');
   setTimeout(() => $('#newFormAreaInput').focus(), 0);
@@ -897,10 +946,16 @@ function removeFormArea(index) {
 
 function resetFormConfig() {
   formConfigDraft = clone(DEFAULT_FORM_CONFIG);
+  formConfigDraft.theme = getWorkspaceTheme();
   $('#formTypesInput').value = formConfigDraft.types.join(', ');
   $('#formPrioritiesInput').value = formConfigDraft.priorities.join(', ');
+  $('#formThemeModeInput').value = formConfigDraft.theme.mode;
+  $('#formThemeColorInput').value = formConfigDraft.theme.accent;
+  $('#formThemeInitialsInput').value = formConfigDraft.theme.initials;
+  $('#formThemeWorkspaceNameInput').value = formConfigDraft.theme.workspaceName;
   $('#formConfigError').classList.add('is-hidden');
   renderFormAreaList();
+  renderFormThemeFields();
 }
 
 async function saveFormConfig(event) {
@@ -1004,6 +1059,7 @@ function saveProfile(event) {
   currentProfile = updated;
   persistProfiles();
   applyProfileTheme();
+  syncFormThemeFromWorkspace({ remote: isCloudSession() });
   updateProfileSummary();
   renderHome();
   renderCategoryOptions();
@@ -1089,6 +1145,7 @@ $('#formConfigForm').addEventListener('submit', saveFormConfig);
 $('#addFormAreaButton').addEventListener('click', addFormArea);
 $('#newFormAreaInput').addEventListener('keydown', (event) => { if (event.key === 'Enter') { event.preventDefault(); addFormArea(); } });
 $('#resetFormConfigButton').addEventListener('click', resetFormConfig);
+$('#formThemeModeInput').addEventListener('change', renderFormThemeFields);
 $('#areaInput').addEventListener('change', () => renderSubareaOptions($('#areaInput').value, ''));
 $('#cloudAuthForm')?.addEventListener('submit', submitCloudAuth);
 $('#cloudAuthToggle')?.addEventListener('click', () => {

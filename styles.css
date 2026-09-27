@@ -455,6 +455,10 @@ h1 { margin-bottom: 12px; color: var(--paper); font-size: clamp(32px, 3.8vw, 52p
 .form-config-add-row { display: flex; gap: 9px; padding-top: 6px; }
 .form-config-add-row input { min-width: 0; flex: 1; height: 39px; border: 1px solid var(--line-dark); background: transparent; color: var(--ink); padding: 10px 11px; font-size: 12px; }
 .form-config-add-row input:focus { outline: 0; border-color: var(--profile-color, var(--orange)); box-shadow: 0 0 0 2px color-mix(in srgb, var(--profile-color, var(--orange)) 18%, transparent); }
+.form-config-theme { display: grid; gap: 14px; padding-top: 4px; border-top: 1px solid var(--line-dark); }
+.form-config-theme-fields { display: grid; grid-template-columns: minmax(120px, .65fr) minmax(120px, .65fr) minmax(180px, 1fr); gap: 13px; }
+.form-config-theme-fields input[type='color'] { width: 100%; height: 39px; padding: 3px; border: 1px solid var(--line-dark); border-radius: 0; background: transparent; cursor: pointer; }
+.form-config-theme-fields input[type='color']:disabled { cursor: not-allowed; opacity: .55; }
 .profile-dialog .button-primary { background: var(--profile-color, var(--orange)); }
 .profile-dialog .button-primary:hover { background: var(--profile-color, var(--orange-hot)); filter: saturate(1.15) brightness(1.06); }
 .profile-dialog .button-quiet { color: var(--muted-dark); border-color: var(--line-dark); }
@@ -481,6 +485,7 @@ h1 { margin-bottom: 12px; color: var(--paper); font-size: clamp(32px, 3.8vw, 52p
   .dialog-footer, .auth-actions { align-items: stretch; flex-direction: column-reverse; }
   .dialog-footer .button, .auth-actions .button { width: 100%; }
   .form-config-area-fields { grid-template-columns: 1fr; gap: 13px; }
+  .form-config-theme-fields { grid-template-columns: 1fr; gap: 13px; }
   .form-config-add-row { align-items: stretch; flex-direction: column; }
   .form-config-add-row .button { width: 100%; }
 }
@@ -510,7 +515,7 @@ h1 { margin-bottom: 12px; color: var(--paper); font-size: clamp(32px, 3.8vw, 52p
 .public-field input, .public-field select, .public-field textarea { width: 100%; border: 1px solid var(--line-dark); border-radius: 0; background: transparent; color: var(--ink); padding: 11px 12px; font-size: 12px; }
 .public-field input, .public-field select { height: 42px; }
 .public-field textarea { resize: vertical; line-height: 1.55; }
-.public-field input:focus, .public-field select:focus, .public-field textarea:focus { outline: 0; border-color: var(--orange); box-shadow: 0 0 0 2px rgba(240, 106, 60, .13); }
+.public-field input:focus, .public-field select:focus, .public-field textarea:focus { outline: 0; border-color: var(--orange); box-shadow: 0 0 0 2px color-mix(in srgb, var(--orange) 16%, transparent); }
 .public-field select option { color: var(--ink); }
 .public-divider { padding-top: 2px; border-top: 1px solid var(--line-dark); color: var(--muted-dark); font-family: 'DM Mono', monospace; font-size: 10px; }
 .public-divider span { position: relative; top: -7px; padding-right: 10px; background: var(--cream); }

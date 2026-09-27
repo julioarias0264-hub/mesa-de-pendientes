@@ -34,7 +34,7 @@ create table if not exists public.form_config (
 );
 
 insert into public.form_config (id, config)
-values (1, '{"areas":[{"name":"Odoo","subareas":["PDV","Inventario","Ventas","Compras"]},{"name":"Administración","subareas":["Facturación","Contabilidad","Reportes"]},{"name":"Clientes","subareas":["Solicitud","Seguimiento","Entrega"]},{"name":"Operación","subareas":["Almacén","Compras","Recepción"]},{"name":"Automatización","subareas":["Hojas de cálculo","Flujos","Integraciones"]},{"name":"Desarrollo","subareas":["Frontend","Backend","QA"]}],"types":["Solicitud","Bug","Mejora","Seguimiento","Configuración","Documentación"],"priorities":["Media","Alta","Baja"]}'::jsonb)
+values (1, '{"areas":[{"name":"Odoo","subareas":["PDV","Inventario","Ventas","Compras"]},{"name":"Administración","subareas":["Facturación","Contabilidad","Reportes"]},{"name":"Clientes","subareas":["Solicitud","Seguimiento","Entrega"]},{"name":"Operación","subareas":["Almacén","Compras","Recepción"]},{"name":"Automatización","subareas":["Hojas de cálculo","Flujos","Integraciones"]},{"name":"Desarrollo","subareas":["Frontend","Backend","QA"]}],"types":["Solicitud","Bug","Mejora","Seguimiento","Configuración","Documentación"],"priorities":["Media","Alta","Baja"],"theme":{"mode":"workspace","accent":"#f06a3c","hot":"#ff8051","ink":"#9c361b","initials":"J","workspaceName":"Julio"}}'::jsonb)
 on conflict (id) do nothing;
 
 create or replace function public.set_tickets_updated_at()
