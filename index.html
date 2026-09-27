@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0b0e0f" />
+    <title>Mesa de trabajo · Julio</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="#top" aria-label="Mesa de tickets, inicio">
+          <span class="brand-mark">A</span>
+          <span>
+            <strong>Mesa de tickets</strong>
+            <small>Julio · espacio de trabajo local</small>
+          </span>
+        </a>
+
+        <nav class="topnav" aria-label="Navegación principal">
+          <button class="topnav-link is-active" type="button" data-filter="all" aria-pressed="true">Recepción</button>
+          <button class="topnav-link" type="button" data-filter="active" aria-pressed="false">En curso <span class="nav-count" id="activeCount">7</span></button>
+          <button class="topnav-link" type="button" data-filter="history" aria-pressed="false">Historial</button>
+        </nav>
+
+        <div class="topbar-actions">
+          <span class="local-status"><span class="status-dot"></span> Guardado local</span>
+          <button class="avatar-button" type="button" aria-label="Abrir menú de usuario">JP</button>
+        </div>
+      </header>
+
+      <div class="product-layout" id="top">
+        <aside class="sequence-rail" aria-label="Resumen de la cola">
+          <div class="rail-spine" aria-hidden="true"></div>
+          <div class="rail-label">JULIO <span>·</span> 27 SEP 2026</div>
+          <div class="rail-summary">
+            <span class="rail-summary-number" id="railTotal">12</span>
+            <span>pendientes<br />en la mesa</span>
+          </div>
+          <div class="rail-stops">
+            <button class="rail-stop is-active" data-filter="all" type="button" aria-pressed="true">
+              <span class="stop-hole"></span>
+              <span><strong>Todos</strong><small id="allCount">0 tickets</small></span>
+            </button>
+            <button class="rail-stop" data-filter="new" type="button" aria-pressed="false">
+              <span class="stop-hole"></span>
+              <span><strong>Nuevos</strong><small id="newCount">4 tickets</small></span>
+            </button>
+            <button class="rail-stop" data-filter="review" type="button" aria-pressed="false">
+              <span class="stop-hole"></span>
+              <span><strong>En revisión</strong><small id="reviewCount">3 tickets</small></span>
+            </button>
+              <button class="rail-stop" data-filter="qa" type="button" aria-pressed="false">
+                <span class="stop-hole"></span>
+                <span><strong>Listos para avanzar</strong><small id="qaCount">5 tickets</small></span>
+            </button>
+            <button class="rail-stop" data-filter="blocked" type="button" aria-pressed="false">
+              <span class="stop-hole"></span>
+              <span><strong>Bloqueados</strong><small id="blockedCount">2 tickets</small></span>
+            </button>
+          </div>
+          <div class="rail-footer">
+            <span class="micro-label">ESPACIO</span>
+            <span class="environment-badge"><span class="status-dot"></span> Julio / local</span>
+          </div>
+        </aside>
+
+        <main class="main-content" id="recepcion">
+          <section class="page-heading">
+            <div>
+              <h1>Recepción de tickets</h1>
+              <p class="heading-copy">Una solicitud clara sale de aquí con contexto, prioridad y un siguiente paso que sí se puede ejecutar.</p>
+            </div>
+            <button class="button button-primary" id="newTicketButton" type="button">
+              <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+              Nuevo ticket
+            </button>
+          </section>
+
+          <section class="workbench" aria-label="Mesa de trabajo">
+            <div class="queue-panel" id="cola">
+              <div class="panel-heading">
+                <div>
+                  <h2>Pendientes recibidos <span class="heading-count" id="visibleCount">12</span></h2>
+                </div>
+                <button class="icon-button" id="refreshButton" type="button" aria-label="Actualizar lista" title="Actualizar lista">
+                  <svg class="icon-svg icon-refresh" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0 1 5" /><path d="M20 5v6h-6" /></svg>
+                </button>
+              </div>
+              <div class="queue-tools">
+                <label class="search-field">
+                  <svg class="icon-svg icon-search" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8" /><path d="m16 16 5 5" /></svg>
+                  <span class="sr-only">Buscar tickets</span>
+                  <input id="searchInput" type="search" placeholder="Buscar por asunto, módulo o área" autocomplete="off" />
+                  <kbd>/</kbd>
+                </label>
+                <div class="filter-row" aria-label="Filtros rápidos">
+                  <button class="filter-chip is-active" type="button" data-filter="all" aria-pressed="true">Todos</button>
+                  <button class="filter-chip" type="button" data-filter="high" aria-pressed="false">Alta prioridad</button>
+                  <button class="filter-chip" type="button" data-filter="odoo" aria-pressed="false">Odoo</button>
+                </div>
+              </div>
+              <div class="film-rule" aria-hidden="true"><span></span><i></i><i></i><i></i><i></i><i></i><i></i><i></i><span></span></div>
+              <div class="ticket-list" id="ticketList" aria-live="polite"></div>
+              <p class="scroll-hint" id="scrollHint">Desliza para ver más pendientes</p>
+              <div class="empty-state is-hidden" id="emptyState">
+                <span class="empty-mark" aria-hidden="true"></span>
+                <strong>No hay tickets con ese filtro</strong>
+                <p>Prueba otra búsqueda o recibe una solicitud nueva.</p>
+              </div>
+            </div>
+
+            <section class="intake-panel" aria-labelledby="editorTitle">
+              <div class="editor-topline">
+                <div>
+                  <h2 id="editorTitle">Editar ticket</h2>
+                </div>
+                <div class="editor-meta">
+                  <span class="ticket-id" id="editorId">REFA-0084</span>
+                  <span class="save-label" id="saveLabel">Guardado hace 2 min</span>
+                </div>
+              </div>
+
+              <div class="status-strip">
+                <div class="status-strip-copy"><span class="strip-pip"></span><strong id="statusLabel">En revisión</strong><span id="statusHelp">Falta confirmar un criterio</span></div>
+                <button class="text-button" id="advanceStatusButton" type="button"><span id="advanceStatusText">Marcar listo para avanzar</span> <svg class="icon-svg inline-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13m-5-6 6 6-6 6" /></svg></button>
+              </div>
+
+              <form class="ticket-form" id="ticketForm" novalidate>
+                <div class="form-grid form-grid-main">
+                  <label class="field field-span-2">
+                    <span>Asunto del ticket <em>*</em></span>
+                    <input id="titleInput" name="title" type="text" placeholder="Ej. Mostrar código interno en cotizaciones" required />
+                  </label>
+                  <label class="field field-span-2">
+                    <span>¿Qué necesita el usuario? <em>*</em></span>
+                    <textarea id="descriptionInput" name="description" rows="4" placeholder="Describe el comportamiento actual y el resultado esperado…" required></textarea>
+                  </label>
+                </div>
+
+                <div class="form-divider"><span>Contexto de trabajo</span><button class="structure-button" id="structureButton" type="button"><svg class="icon-svg spark-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.7 6.3L20 11l-6.3 1.7L12 19l-1.7-6.3L4 11l6.3-1.7L12 3z" /></svg> Estructurar solicitud</button></div>
+
+                <div class="form-grid">
+                  <label class="field">
+                    <span>Área de trabajo <em>*</em></span>
+                    <select id="areaInput" name="area" required>
+                      <option value="">Seleccionar área</option>
+                      <option>Clientes</option>
+                      <option>Administración</option>
+                      <option>Desarrollo</option>
+                      <option>Automatización</option>
+                      <option>Operación</option>
+                      <option>Personal</option>
+                      <option>Documentación</option>
+                      <option>Odoo</option>
+                      <option>Otro</option>
+                    </select>
+                  </label>
+                  <label class="field">
+                    <span>Tipo de solicitud <em>*</em></span>
+                    <select id="typeInput" name="type" required>
+                      <option value="">Seleccionar tipo</option>
+                      <option>Bug</option>
+                      <option>Mejora</option>
+                      <option>Solicitud</option>
+                      <option>Seguimiento</option>
+                      <option>Configuración</option>
+                      <option>Documentación</option>
+                    </select>
+                  </label>
+                  <label class="field">
+                    <span>Prioridad <em>*</em></span>
+                    <select id="priorityInput" name="priority" required>
+                      <option value="">Seleccionar prioridad</option>
+                      <option>Alta</option>
+                      <option>Media</option>
+                      <option>Baja</option>
+                    </select>
+                  </label>
+                  <label class="field">
+                    <span>Proyecto o herramienta</span>
+                    <input id="moduleInput" name="module" type="text" placeholder="Ej. Odoo, Sheets, cliente o documento" />
+                  </label>
+                  <label class="field">
+                    <span>Solicitante</span>
+                    <input id="requesterInput" name="requester" type="text" placeholder="Nombre o área" />
+                  </label>
+                  <label class="field">
+                    <span>Contexto</span>
+                    <select id="environmentInput" name="environment">
+                      <option>Local</option>
+                      <option>Pruebas</option>
+                      <option>Producción</option>
+                      <option>Cliente</option>
+                      <option>Personal</option>
+                    </select>
+                  </label>
+                </div>
+
+                <label class="field acceptance-field">
+                  <span>Criterios de aceptación <em>*</em></span>
+                  <textarea id="acceptanceInput" name="acceptance" rows="3" placeholder="¿Cómo sabremos que quedó bien? Escribe una condición comprobable…" required></textarea>
+                  <small class="field-hint">Una condición por línea. Quien lo atienda usará esto como base para validar el resultado.</small>
+                </label>
+
+                <div class="form-footer">
+                  <div class="readiness" aria-live="polite">
+                    <span class="readiness-ring"><span id="readinessValue">0%</span></span>
+                    <span><strong id="readinessTitle">Ficha incompleta</strong><small id="readinessCopy">Completa los campos marcados para enviarla.</small></span>
+                  </div>
+                  <div class="form-actions">
+                    <button class="button button-quiet" id="discardButton" type="button">Descartar cambios</button>
+                    <button class="button button-primary" id="saveTicketButton" type="submit"><svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4L19 6" /></svg> Guardar ticket</button>
+                  </div>
+                </div>
+                <p class="form-error is-hidden" id="formError" role="alert"></p>
+              </form>
+            </section>
+          </section>
+        </main>
+      </div>
+    </div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="app.js"></script>
+  </body>
+</html>
