@@ -1,6 +1,6 @@
 # Mesa de trabajo de Julio
 
-Aplicación local en español para recibir solicitudes, organizar una cola de tickets, asignar prioridades y estados, y consultar el historial. Express sirve la interfaz y la API; los tickets y la configuración del formulario se guardan en archivos JSON locales. No requiere base de datos ni servicios externos.
+Aplicación local en español para recibir solicitudes de cualquier tipo, organizar una cola de tickets, asignar prioridades y estados, y consultar el historial. Las áreas, tipos, prioridades y detalles se pueden adaptar desde la mesa a distintos equipos y proyectos. Express sirve la interfaz y la API; los tickets y la configuración se guardan en archivos JSON locales, sin depender de una industria ni de servicios externos.
 
 ## Requisitos
 

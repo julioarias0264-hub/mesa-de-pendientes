@@ -11,7 +11,7 @@ const typeSelect = form?.querySelector('[name="type"]');
 const prioritySelect = form?.querySelector('[name="priority"]');
 let formConfig = window.normalizeMesaFormConfig
   ? window.normalizeMesaFormConfig(window.MESA_FORM_DEFAULTS)
-  : { areas: [{ name: 'Odoo', subareas: ['PDV', 'Inventario'] }], types: ['Solicitud', 'Bug', 'Mejora'], priorities: ['Media', 'Alta', 'Baja'] };
+  : { areas: [{ name: 'General', subareas: ['Consulta', 'Soporte', 'Seguimiento'] }], types: ['Solicitud', 'Bug', 'Mejora'], priorities: ['Media', 'Alta', 'Baja'] };
 
 function applyPublicTheme() {
   const theme = formConfig.theme || {};

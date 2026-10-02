@@ -11,10 +11,10 @@ const COLOR_OPTIONS = [
   { name: 'Lima', value: '#a9cf78', hot: '#c1e294', ink: '#5d7e32' }
 ];
 
-const DEFAULT_CATEGORIES = ['Clientes', 'Administración', 'Desarrollo', 'Automatización', 'Operación', 'Personal', 'Documentación', 'Odoo'];
+const DEFAULT_CATEGORIES = ['General', 'Proyectos', 'Clientes', 'Administración', 'Desarrollo', 'Operación', 'Documentación', 'Personal'];
 const statusLabels = { new: 'Nuevo', review: 'En revisión', qa: 'Listo para avanzar', blocked: 'Bloqueado', done: 'Cerrado' };
 const FORM_CONFIG_KEY = 'julio-form-config-v1';
-const DEFAULT_FORM_CONFIG = window.MESA_FORM_DEFAULTS || { areas: [{ name: 'Odoo', subareas: ['PDV', 'Inventario', 'Ventas', 'Compras'] }], types: ['Solicitud', 'Bug', 'Mejora'], priorities: ['Media', 'Alta', 'Baja'], theme: { mode: 'workspace', accent: '#f06a3c', hot: '#ff8051', ink: '#9c361b', initials: 'J', workspaceName: 'Julio' } };
+const DEFAULT_FORM_CONFIG = window.MESA_FORM_DEFAULTS || { areas: [{ name: 'General', subareas: ['Consulta', 'Soporte', 'Seguimiento'] }], types: ['Solicitud', 'Bug', 'Mejora'], priorities: ['Media', 'Alta', 'Baja'], theme: { mode: 'workspace', accent: '#f06a3c', hot: '#ff8051', ink: '#9c361b', initials: 'J', workspaceName: 'Julio' } };
 
 let profiles = loadProfiles();
 let activeProfileId = localStorage.getItem(ACTIVE_PROFILE_KEY) || profiles[0]?.id || null;
@@ -482,7 +482,15 @@ function smartStructure() {
     return;
   }
   const category = (name) => formConfig.areas.some((area) => area.name === name) ? name : formConfig.areas[0]?.name || '';
-  const area = text.includes('pos') || text.includes('caja') || text.includes('ticket') || text.includes('vale') || text.includes('pdv') || text.includes('compra') || text.includes('proveedor') || text.includes('inventario') || text.includes('recepc') ? category('Odoo') : text.includes('factura') || text.includes('contab') ? category('Administración') : text.includes('cliente') ? category('Clientes') : text.includes('automat') || text.includes('hoja') || text.includes('flujo') ? category('Automatización') : category('Desarrollo');
+  const areaRules = [
+    { terms: ['cliente', 'usuario'], area: 'Clientes' },
+    { terms: ['administr', 'gestión', 'documento', 'reporte'], area: 'Administración' },
+    { terms: ['operación', 'proceso', 'coordinación'], area: 'Operación' },
+    { terms: ['desarrollo', 'mejora', 'corrección'], area: 'Desarrollo' },
+    { terms: ['proyecto', 'planificación', 'entrega'], area: 'Proyectos' }
+  ];
+  const matchedRule = areaRules.find((rule) => rule.terms.some((term) => text.includes(term)));
+  const area = category(matchedRule?.area || 'General');
   const type = text.includes('bug') || text.includes('no ') || text.includes('error') || text.includes('falla') ? 'Bug' : 'Solicitud';
   $('#areaInput').value = area;
   $('#typeInput').value = type;
@@ -798,7 +806,7 @@ function renderFormAreaList() {
     <div class="form-config-area-row" data-form-area-row>
       <div class="form-config-area-fields">
         <label class="field"><span>Área</span><input type="text" data-form-area-name maxlength="40" /></label>
-        <label class="field"><span>Detalles dependientes <small>(separados por coma)</small></span><input type="text" data-form-area-subareas placeholder="PDV, Inventario, Compras" /></label>
+        <label class="field"><span>Detalles dependientes <small>(separados por coma)</small></span><input type="text" data-form-area-subareas placeholder="Ej. soporte, seguimiento, revisión" /></label>
       </div>
       <button class="icon-button form-config-remove" type="button" data-remove-form-area="${index}" aria-label="Eliminar área">×</button>
     </div>

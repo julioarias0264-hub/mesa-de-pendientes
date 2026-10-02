@@ -1,12 +1,12 @@
 const formConfigRoot = typeof window !== 'undefined' ? window : globalThis;
 formConfigRoot.MESA_FORM_DEFAULTS = {
   areas: [
-    { name: 'Odoo', subareas: ['PDV', 'Inventario', 'Ventas', 'Compras'] },
-    { name: 'Administración', subareas: ['Facturación', 'Contabilidad', 'Reportes'] },
-    { name: 'Clientes', subareas: ['Solicitud', 'Seguimiento', 'Entrega'] },
-    { name: 'Operación', subareas: ['Almacén', 'Compras', 'Recepción'] },
-    { name: 'Automatización', subareas: ['Hojas de cálculo', 'Flujos', 'Integraciones'] },
-    { name: 'Desarrollo', subareas: ['Frontend', 'Backend', 'QA'] }
+    { name: 'General', subareas: ['Consulta', 'Soporte', 'Seguimiento'] },
+    { name: 'Proyectos', subareas: ['Planificación', 'Ejecución', 'Revisión'] },
+    { name: 'Clientes', subareas: ['Atención', 'Solicitud', 'Seguimiento'] },
+    { name: 'Administración', subareas: ['Gestión', 'Documentación', 'Reportes'] },
+    { name: 'Operación', subareas: ['Procesos', 'Coordinación', 'Seguimiento'] },
+    { name: 'Desarrollo', subareas: ['Mejora', 'Corrección', 'Mantenimiento'] }
   ],
   types: ['Solicitud', 'Bug', 'Mejora', 'Seguimiento', 'Configuración', 'Documentación'],
   priorities: ['Media', 'Alta', 'Baja'],
