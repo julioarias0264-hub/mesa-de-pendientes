@@ -42,7 +42,3 @@ Los campos del formulario y la apariencia se editan desde la mesa y se guardan e
 - `GET /api/form-config`: leer opciones públicas del formulario.
 - `PUT /api/form-config`: actualizar opciones (requiere sesión).
 - `GET`, `POST`, `DELETE /api/session`: consultar, iniciar y cerrar sesión.
-
-## Publicación
-
-Esta versión necesita un proceso Node.js y almacenamiento persistente para `DATA_DIR`. GitHub Pages solo publica archivos estáticos y no ejecuta el backend; el workflow anterior de Pages se retiró. La demo de entrega se ejecuta en `localhost`.
