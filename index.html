@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0b0e0f" />
-    <title>Mesa de trabajo · Julio</title>
+    <title>Mesa de pendientes</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -13,8 +13,8 @@
         <a class="brand" href="#home" id="homeLink" aria-label="Mesa de tickets, inicio">
           <span class="brand-mark" id="brandMark">J</span>
           <span>
-            <strong id="brandName">Mesa de tickets</strong>
-            <small id="brandWorkspace">Julio · espacio de trabajo local</small>
+            <strong id="brandName">Mesa de pendientes</strong>
+            <small id="brandWorkspace">Tu espacio local</small>
           </span>
         </a>
 
@@ -35,7 +35,7 @@
       <div class="product-layout" id="top">
         <aside class="sequence-rail" aria-label="Resumen de la cola">
           <div class="rail-spine" aria-hidden="true"></div>
-          <div class="rail-label"><span id="railWorkspace">JULIO</span> <span>·</span> <span id="railDate">27 SEP 2026</span></div>
+          <div class="rail-label"><span id="railWorkspace">MI MESA</span> <span>·</span> <span id="railDate">27 SEP 2026</span></div>
           <div class="rail-summary">
             <span class="rail-summary-number" id="railTotal">12</span>
             <span>pendientes<br />en la mesa</span>
@@ -64,7 +64,7 @@
           </div>
           <div class="rail-footer">
             <span class="micro-label">ESPACIO</span>
-            <span class="environment-badge"><span class="status-dot"></span> <span id="railEnvironment">Julio</span> / local</span>
+            <span class="environment-badge"><span class="status-dot"></span> <span id="railEnvironment">Mi mesa</span> / local</span>
           </div>
         </aside>
 
@@ -73,7 +73,7 @@
             <div class="home-hero">
               <div class="home-hero-copy">
                 <span class="home-eyebrow">ESPACIO PERSONAL</span>
-                <h1>Hola, <span id="homeName">Julio</span><span class="home-period">.</span></h1>
+                <h1>Hola, <span id="homeName">tu espacio</span><span class="home-period">.</span></h1>
                 <p>Tu mesa para capturar solicitudes, ordenar pendientes y dejar claro qué sigue.</p>
               </div>
               <div class="home-hero-action">
@@ -147,7 +147,7 @@
             </button>
           </section>
 
-          <section class="workbench" aria-label="Mesa de trabajo">
+          <section class="workbench" aria-label="Mesa de pendientes">
             <div class="queue-panel" id="cola">
               <div class="panel-heading">
                 <div>
@@ -304,7 +304,7 @@
         <div class="auth-mark" aria-hidden="true">J</div>
         <p class="auth-kicker">PERFILES LOCALES</p>
         <h2 id="authTitle">Elige un perfil</h2>
-        <p class="auth-copy">Cada perfil puede personalizar su apariencia y sus categorías en esta mesa.</p>
+        <p class="auth-copy" id="authCopy">Cada perfil puede personalizar su apariencia y sus categorías en esta mesa.</p>
 
         <div id="profilePicker" class="profile-picker is-hidden">
           <div class="profile-list" id="profileList"></div>
@@ -314,7 +314,7 @@
         <form class="profile-form is-hidden" id="onboardingForm">
           <label class="field">
             <span>Tu nombre <em>*</em></span>
-            <input id="onboardingName" type="text" maxlength="40" placeholder="Ej. Julio" autocomplete="name" required />
+            <input id="onboardingName" type="text" maxlength="40" placeholder="Ej. Ana o Mi equipo" autocomplete="name" required />
           </label>
           <label class="field">
             <span>Iniciales</span>
@@ -405,7 +405,7 @@
             <div class="form-config-theme-fields is-hidden" id="formCustomThemeFields">
               <label class="field"><span>Color principal</span><input id="formThemeColorInput" type="color" /></label>
               <label class="field"><span>Iniciales</span><input id="formThemeInitialsInput" type="text" maxlength="3" placeholder="J" /></label>
-              <label class="field"><span>Nombre del espacio</span><input id="formThemeWorkspaceNameInput" type="text" maxlength="40" placeholder="Julio" /></label>
+              <label class="field"><span>Nombre del espacio</span><input id="formThemeWorkspaceNameInput" type="text" maxlength="40" placeholder="Mi mesa" /></label>
             </div>
           </div>
           <p class="form-error is-hidden" id="formConfigError" role="alert"></p>

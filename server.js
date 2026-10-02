@@ -89,7 +89,7 @@ function normalizeTicket(input, previous = {}) {
 
 function nextTicketId(tickets) {
   const max = tickets.reduce((value, ticket) => Math.max(value, Number(String(ticket.id).match(/(\d+)$/)?.[1] || 0)), 0);
-  return `JUL-${String(max + 1).padStart(4, '0')}`;
+  return `PEN-${String(max + 1).padStart(4, '0')}`;
 }
 
 app.disable('x-powered-by');
@@ -162,7 +162,7 @@ app.use((error, _req, res, _next) => {
 });
 
 app.listen(PORT, HOST, () => {
-  console.log(`Mesa de trabajo disponible en http://${HOST}:${PORT}`);
+  console.log(`Mesa de pendientes disponible en http://${HOST}:${PORT}`);
   console.log(`Formulario público local: http://${HOST}:${PORT}/solicitar.html`);
   console.log(`Datos persistentes: ${DATA_DIR}`);
 });

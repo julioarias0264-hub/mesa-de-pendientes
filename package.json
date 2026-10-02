@@ -1,8 +1,8 @@
 {
-  "name": "mesa-de-trabajo-julio",
+  "name": "mesa-de-pendientes",
   "version": "2.0.0",
   "private": true,
-  "description": "Mesa local de trabajo y solicitudes con Node.js",
+  "description": "Mesa local de pendientes y solicitudes con Node.js",
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js"

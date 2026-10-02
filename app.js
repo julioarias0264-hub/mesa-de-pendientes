@@ -1,5 +1,8 @@
-const PROFILES_KEY = 'julio-ticket-profiles-v1';
-const ACTIVE_PROFILE_KEY = 'julio-active-profile-v1';
+const PROFILES_KEY = 'mesa-pendientes-profiles-v1';
+const LEGACY_PROFILES_KEY = 'julio-ticket-profiles-v1';
+const ACTIVE_PROFILE_KEY = 'mesa-pendientes-active-profile-v1';
+const LEGACY_ACTIVE_PROFILE_KEY = 'julio-active-profile-v1';
+const PROFILE_NAME_SETUP_KEY = 'mesa-pendientes-profile-name-set-v1';
 
 const COLOR_OPTIONS = [
   { name: 'Coral', value: '#f06a3c', hot: '#ff8051', ink: '#9c361b' },
@@ -13,11 +16,12 @@ const COLOR_OPTIONS = [
 
 const DEFAULT_CATEGORIES = ['General', 'Proyectos', 'Clientes', 'Administración', 'Desarrollo', 'Operación', 'Documentación', 'Personal'];
 const statusLabels = { new: 'Nuevo', review: 'En revisión', qa: 'Listo para avanzar', blocked: 'Bloqueado', done: 'Cerrado' };
-const FORM_CONFIG_KEY = 'julio-form-config-v1';
-const DEFAULT_FORM_CONFIG = window.MESA_FORM_DEFAULTS || { areas: [{ name: 'General', subareas: ['Consulta', 'Soporte', 'Seguimiento'] }], types: ['Solicitud', 'Bug', 'Mejora'], priorities: ['Media', 'Alta', 'Baja'], theme: { mode: 'workspace', accent: '#f06a3c', hot: '#ff8051', ink: '#9c361b', initials: 'J', workspaceName: 'Julio' } };
+const FORM_CONFIG_KEY = 'mesa-pendientes-form-config-v1';
+const LEGACY_FORM_CONFIG_KEY = 'julio-form-config-v1';
+const DEFAULT_FORM_CONFIG = window.MESA_FORM_DEFAULTS || { areas: [{ name: 'General', subareas: ['Consulta', 'Soporte', 'Seguimiento'] }], types: ['Solicitud', 'Bug', 'Mejora'], priorities: ['Media', 'Alta', 'Baja'], theme: { mode: 'workspace', accent: '#f06a3c', hot: '#ff8051', ink: '#9c361b', initials: 'M', workspaceName: 'Mi mesa' } };
 
 let profiles = loadProfiles();
-let activeProfileId = localStorage.getItem(ACTIVE_PROFILE_KEY) || profiles[0]?.id || null;
+let activeProfileId = localStorage.getItem(ACTIVE_PROFILE_KEY) || localStorage.getItem(LEGACY_ACTIVE_PROFILE_KEY) || profiles[0]?.id || null;
 let currentProfile = profiles.find((profile) => profile.id === activeProfileId) || null;
 let tickets = [];
 let formConfig = loadFormConfig();
@@ -28,6 +32,7 @@ let searchTerm = '';
 let isNewTicket = false;
 let onboardingColor = COLOR_OPTIONS[0].value;
 let profileDraft = null;
+let profileSetupId = null;
 
 let formConfigDraft = null;
 
@@ -57,7 +62,8 @@ function normalizeFormConfig(config) {
 
 function loadFormConfig() {
   try {
-    return normalizeFormConfig(JSON.parse(localStorage.getItem(FORM_CONFIG_KEY)));
+    const saved = localStorage.getItem(FORM_CONFIG_KEY) || localStorage.getItem(LEGACY_FORM_CONFIG_KEY);
+    return normalizeFormConfig(JSON.parse(saved));
   } catch (error) {
     return normalizeFormConfig(DEFAULT_FORM_CONFIG);
   }
@@ -83,7 +89,8 @@ function normalizeProfile(profile) {
 
 function loadProfiles() {
   try {
-    const saved = JSON.parse(localStorage.getItem(PROFILES_KEY));
+    const raw = localStorage.getItem(PROFILES_KEY) || localStorage.getItem(LEGACY_PROFILES_KEY);
+    const saved = JSON.parse(raw);
     return Array.isArray(saved) ? saved.map(normalizeProfile).filter(Boolean) : [];
   } catch (error) {
     return [];
@@ -179,7 +186,7 @@ function getWorkspaceTheme() {
     hot: color.hot,
     ink: color.ink,
     initials: currentProfile?.initials || 'J',
-    workspaceName: currentProfile?.name || 'Julio'
+    workspaceName: currentProfile?.name || 'Mi mesa'
   };
 }
 
@@ -413,7 +420,7 @@ async function saveTicket(event) {
   try {
     if (isNewTicket) {
       const nextNumber = Math.max(...tickets.map((ticket) => Number(String(ticket.id).replace(/\D/g, ''))), 0) + 1;
-      let ticket = { id: `JUL-${String(nextNumber).padStart(4, '0')}`, ...data, status: 'new', updated: `a las ${now}`, source: 'desk' };
+      let ticket = { id: `PEN-${String(nextNumber).padStart(4, '0')}`, ...data, status: 'new', updated: `a las ${now}`, source: 'desk' };
       ticket = await createServerTicket(ticket);
       tickets = [ticket, ...tickets.filter((item) => item.id !== ticket.id)];
       selectedId = ticket.id;
@@ -590,8 +597,8 @@ function updateSyncStatus() {
 
 function updateProfileSummary() {
   if (!currentProfile) return;
-  $('#brandMark').textContent = currentProfile.initials[0] || 'J';
-  $('#brandWorkspace').textContent = `${currentProfile.name} · mesa local`;
+  $('#brandMark').textContent = currentProfile.initials[0] || 'M';
+  $('#brandWorkspace').textContent = `${currentProfile.name} · mesa de pendientes`;
   $('#profileButton').textContent = currentProfile.initials;
   $('#profileButton').setAttribute('aria-label', `Abrir perfil de ${currentProfile.name}`);
   $('#railWorkspace').textContent = currentProfile.name.toUpperCase();
@@ -632,17 +639,25 @@ function renderProfileList() {
 }
 
 function showProfilePicker() {
+  $('#authTitle').textContent = 'Elige un perfil';
+  $('#authCopy').textContent = 'Cada perfil puede personalizar su apariencia y sus categorías en esta mesa.';
   $('#profilePicker').classList.remove('is-hidden');
   $('#onboardingForm').classList.add('is-hidden');
   renderProfileList();
 }
 
-function showOnboarding() {
+function showOnboarding(profileId = null) {
+  const existingProfile = profiles.find((profile) => profile.id === profileId);
+  profileSetupId = existingProfile?.id || null;
+  $('#authTitle').textContent = existingProfile ? 'Personaliza tu espacio' : 'Ponle nombre a tu mesa';
+  $('#authCopy').textContent = existingProfile
+    ? 'Escribe el nombre que quieres mostrar en esta mesa.'
+    : 'Escribe tu nombre o el de tu espacio para personalizar la mesa.';
   $('#profilePicker').classList.add('is-hidden');
   $('#onboardingForm').classList.remove('is-hidden');
   $('#onboardingName').value = '';
   $('#onboardingInitials').value = '';
-  onboardingColor = COLOR_OPTIONS[0].value;
+  onboardingColor = existingProfile?.color || COLOR_OPTIONS[0].value;
   renderColorPicker('onboardingColors', onboardingColor, (color) => { onboardingColor = color; });
   setTimeout(() => $('#onboardingName').focus(), 0);
 }
@@ -658,15 +673,18 @@ function hideAuthGate() {
 
 async function bootApp() {
   if (!profiles.length) {
-    profiles = [normalizeProfile({
-      id: makeId(), name: 'Julio', initials: 'J', color: COLOR_OPTIONS[0].value,
-      categories: DEFAULT_CATEGORIES
-    })];
-    persistProfiles();
+    showAuthGate();
+    return;
   }
   currentProfile = profiles.find((profile) => profile.id === activeProfileId) || profiles[0];
   activeProfileId = currentProfile.id;
   localStorage.setItem(ACTIVE_PROFILE_KEY, activeProfileId);
+
+  if (!localStorage.getItem(PROFILE_NAME_SETUP_KEY)) {
+    showAuthGate();
+    showOnboarding(currentProfile.id);
+    return;
+  }
 
   await refreshFormConfig({ quiet: true });
   const loaded = await refreshTickets({ quiet: true });
@@ -675,15 +693,29 @@ async function bootApp() {
   if (!loaded) showToast('No se pudieron cargar los tickets. Pulsa actualizar para intentarlo de nuevo.');
 }
 
-function createProfile(event) {
+async function createProfile(event) {
   event.preventDefault();
   const name = $('#onboardingName').value.trim();
   if (!name) return;
   const rawInitials = $('#onboardingInitials').value.trim().replace(/[^a-z0-9]/gi, '').toUpperCase();
-  const profile = normalizeProfile({ id: makeId(), name, initials: rawInitials || profileInitials(name), color: onboardingColor, categories: DEFAULT_CATEGORIES });
-  profiles = [...profiles, profile];
+  const existing = profiles.find((profile) => profile.id === profileSetupId);
+  const profile = normalizeProfile(existing
+    ? { ...existing, name, initials: rawInitials || profileInitials(name), color: onboardingColor }
+    : { id: makeId(), name, initials: rawInitials || profileInitials(name), color: onboardingColor, categories: DEFAULT_CATEGORIES });
+  profiles = existing
+    ? profiles.map((item) => item.id === profile.id ? profile : item)
+    : [...profiles, profile];
+  profileSetupId = null;
+  localStorage.setItem(PROFILE_NAME_SETUP_KEY, 'configured');
   persistProfiles();
-  loginProfile(profile.id);
+  currentProfile = profile;
+  activeProfileId = profile.id;
+  localStorage.setItem(ACTIVE_PROFILE_KEY, activeProfileId);
+  await refreshFormConfig({ quiet: true });
+  const loaded = await refreshTickets({ quiet: true });
+  hideAuthGate();
+  initializeWorkspace();
+  if (!loaded) showToast('No se pudieron cargar los tickets. Pulsa actualizar para intentarlo de nuevo.');
 }
 
 function loginProfile(profileId) {

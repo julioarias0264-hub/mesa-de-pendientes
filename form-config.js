@@ -10,7 +10,7 @@ formConfigRoot.MESA_FORM_DEFAULTS = {
   ],
   types: ['Solicitud', 'Bug', 'Mejora', 'Seguimiento', 'Configuración', 'Documentación'],
   priorities: ['Media', 'Alta', 'Baja'],
-  theme: { mode: 'workspace', accent: '#f06a3c', hot: '#ff8051', ink: '#9c361b', initials: 'J', workspaceName: 'Julio' }
+  theme: { mode: 'workspace', accent: '#f06a3c', hot: '#ff8051', ink: '#9c361b', initials: 'M', workspaceName: 'Mi mesa' }
 };
 
 formConfigRoot.normalizeMesaFormConfig = function normalizeMesaFormConfig(config) {

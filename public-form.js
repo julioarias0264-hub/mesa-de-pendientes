@@ -18,9 +18,8 @@ function applyPublicTheme() {
   const accent = theme.accent || '#f06a3c';
   const hot = theme.hot || accent;
   const ink = theme.ink || accent;
-  const workspaceName = theme.workspaceName || 'Julio';
-  const initials = theme.initials || workspaceName[0] || 'J';
-  const codePrefix = initials.replace(/[^a-z0-9]/gi, '').toUpperCase().slice(0, 3) || 'JUL';
+  const workspaceName = theme.workspaceName || 'Mi mesa';
+  const initials = theme.initials || workspaceName[0] || 'M';
   const root = document.documentElement;
   root.style.setProperty('--profile-color', accent);
   root.style.setProperty('--profile-hot', hot);
@@ -41,7 +40,7 @@ function applyPublicTheme() {
   if (subtitle) subtitle.textContent = `${workspaceName} · formulario de solicitudes`;
   if (intro) intro.textContent = `Completa este formulario y la solicitud llegará directamente a la mesa de ${workspaceName} con el contexto necesario para darle seguimiento.`;
   if (successWorkspace) successWorkspace.textContent = workspaceName;
-  if (panelCode) panelCode.textContent = `${codePrefix}—`;
+  if (panelCode) panelCode.textContent = 'PEN—';
   if (title) title.textContent = `Enviar solicitud · Mesa de ${workspaceName}`;
 }
 
