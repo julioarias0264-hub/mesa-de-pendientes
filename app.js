@@ -28,7 +28,6 @@ let searchTerm = '';
 let isNewTicket = false;
 let onboardingColor = COLOR_OPTIONS[0].value;
 let profileDraft = null;
-let adminSession = null;
 
 let formConfigDraft = null;
 
@@ -99,10 +98,6 @@ function persist() {
   // Los tickets se guardan únicamente en el servidor, en DATA_DIR.
 }
 
-function isAdminSession() {
-  return Boolean(adminSession);
-}
-
 async function apiRequest(url, options = {}) {
   const response = await fetch(url, {
     credentials: 'same-origin',
@@ -114,7 +109,6 @@ async function apiRequest(url, options = {}) {
   if (!response.ok) {
     const error = new Error(body.error || 'No se pudo completar la solicitud.');
     error.status = response.status;
-    if (response.status === 401 && adminSession) { adminSession = null; showAuthGate(); }
     throw error;
   }
   return body;
@@ -139,7 +133,6 @@ function mapTicket(row) {
 }
 
 async function refreshTickets({ quiet = false } = {}) {
-  if (!isAdminSession()) return false;
   try {
     tickets = (await apiRequest('/api/tickets')).map(mapTicket);
     selectedId = tickets[0]?.id || null;
@@ -190,7 +183,7 @@ function getWorkspaceTheme() {
   };
 }
 
-function syncFormThemeFromWorkspace({ saveToServer = false } = {}) {
+function syncFormThemeFromWorkspace({ saveToServer = true } = {}) {
   if (!currentProfile || formConfig.theme?.mode === 'custom') return;
   formConfig.theme = getWorkspaceTheme();
   persistFormConfig();
@@ -592,7 +585,7 @@ function applyProfileTheme() {
 function updateSyncStatus() {
   const node = $('#syncStatus');
   if (!node) return;
-  node.textContent = isAdminSession() ? 'Guardado en el servidor local' : 'Sesión cerrada';
+  node.textContent = 'Guardado en este equipo';
 }
 
 function updateProfileSummary() {
@@ -610,7 +603,7 @@ function updateProfileSummary() {
 
 function initializeWorkspace() {
   applyProfileTheme();
-  syncFormThemeFromWorkspace({ saveToServer: isAdminSession() });
+  syncFormThemeFromWorkspace();
   updateProfileSummary();
   renderCategoryOptions();
   renderFilterChips();
@@ -654,30 +647,8 @@ function showOnboarding() {
   setTimeout(() => $('#onboardingName').focus(), 0);
 }
 
-function setAdminAuthStatus(message, success = false) {
-  const node = $('#adminAuthStatus');
-  if (!node) return;
-  node.textContent = message;
-  node.classList.toggle('is-success', success);
-}
-
-function renderAdminAuthPanel() {
-  const panel = $('#adminAuthPanel');
-  if (!panel) return;
-  panel.classList.toggle('is-hidden', Boolean(adminSession));
-  $('#adminAuthTitle').textContent = 'Acceso de administrador';
-  $('#adminAuthCopy').textContent = 'Ingresa la contraseña configurada para abrir la cola de solicitudes.';
-  $('#adminAuthSubmit').textContent = 'Entrar';
-}
-
 function showAuthGate() {
   $('#authGate').setAttribute('aria-hidden', 'false');
-  renderAdminAuthPanel();
-  if (!adminSession) {
-    $('#profilePicker').classList.add('is-hidden');
-    $('#onboardingForm').classList.add('is-hidden');
-    return;
-  }
   if (profiles.length) showProfilePicker(); else showOnboarding();
 }
 
@@ -685,55 +656,23 @@ function hideAuthGate() {
   $('#authGate').setAttribute('aria-hidden', 'true');
 }
 
-async function submitAdminAuth(event) {
-  event.preventDefault();
-  const password = $('#adminPasswordInput').value;
-  const button = $('#adminAuthSubmit');
-  button.disabled = true;
-  setAdminAuthStatus('Verificando acceso…');
-  try {
-    await apiRequest('/api/session', { method: 'POST', body: JSON.stringify({ password }) });
-    adminSession = { authenticated: true };
-    $('#adminPasswordInput').value = '';
-    setAdminAuthStatus('Acceso correcto.', true);
-    await enterWorkspace();
-  } catch (error) {
-    setAdminAuthStatus(error.status === 401 ? 'La contraseña no es correcta.' : error.message || 'No se pudo iniciar sesión.');
-  } finally {
-    button.disabled = false;
-  }
-}
-
-async function enterWorkspace() {
-  const synced = await refreshTickets({ quiet: true });
-  if (!synced) {
-    adminSession = null;
-    setAdminAuthStatus('No se pudo leer la cola. Revisa que el servidor siga activo e inténtalo de nuevo.');
-    showAuthGate();
-    return;
-  }
-  await refreshFormConfig({ quiet: true });
-  renderAdminAuthPanel();
-  if (currentProfile) {
-    hideAuthGate();
-    initializeWorkspace();
-    showToast(`Bienvenido, ${currentProfile.name}.`);
-  } else {
-    showAuthGate();
-  }
-}
-
 async function bootApp() {
-  try {
-    const session = await apiRequest('/api/session');
-    adminSession = session?.authenticated ? { authenticated: true } : null;
-    if (adminSession) await enterWorkspace();
-    else showAuthGate();
-  } catch (error) {
-    adminSession = null;
-    setAdminAuthStatus('No se pudo conectar con el servidor local. Inícialo con npm start e inténtalo de nuevo.');
-    showAuthGate();
+  if (!profiles.length) {
+    profiles = [normalizeProfile({
+      id: makeId(), name: 'Julio', initials: 'J', color: COLOR_OPTIONS[0].value,
+      categories: DEFAULT_CATEGORIES
+    })];
+    persistProfiles();
   }
+  currentProfile = profiles.find((profile) => profile.id === activeProfileId) || profiles[0];
+  activeProfileId = currentProfile.id;
+  localStorage.setItem(ACTIVE_PROFILE_KEY, activeProfileId);
+
+  await refreshFormConfig({ quiet: true });
+  const loaded = await refreshTickets({ quiet: true });
+  hideAuthGate();
+  initializeWorkspace();
+  if (!loaded) showToast('No se pudieron cargar los tickets. Pulsa actualizar para intentarlo de nuevo.');
 }
 
 function createProfile(event) {
@@ -760,7 +699,7 @@ function loginProfile(profileId) {
   $('#searchInput').value = '';
   hideAuthGate();
   initializeWorkspace();
-  showToast(`${isAdminSession() ? 'Mesa abierta' : 'Bienvenido'}, ${currentProfile.name}.`);
+  showToast(`Bienvenido, ${currentProfile.name}.`);
 }
 
 function readFormConfigDraft() {
@@ -994,7 +933,7 @@ function saveProfile(event) {
   currentProfile = updated;
   persistProfiles();
   applyProfileTheme();
-  syncFormThemeFromWorkspace({ saveToServer: isAdminSession() });
+  syncFormThemeFromWorkspace();
   updateProfileSummary();
   renderHome();
   renderCategoryOptions();
@@ -1003,14 +942,11 @@ function saveProfile(event) {
   showToast('Perfil y categorías actualizados.');
 }
 
-async function logoutProfile() {
+function logoutProfile() {
   closeProfileModal();
-  try { await apiRequest('/api/session', { method: 'DELETE' }); } catch (error) { console.error(error); }
-  adminSession = null;
   localStorage.removeItem(ACTIVE_PROFILE_KEY);
   currentProfile = null;
   activeProfileId = null;
-  tickets = [];
   showAuthGate();
 }
 
@@ -1066,7 +1002,7 @@ $('#homeProfileButton').addEventListener('click', openProfileModal);
 $('#formConfigButton').addEventListener('click', openFormConfigModal);
 $('#discardButton').addEventListener('click', () => { if (isNewTicket) { if (tickets[0]) selectTicket(tickets[0].id); else clearForm(); } else selectTicket(selectedId); showToast('Cambios descartados.'); });
 $('#searchInput').addEventListener('input', (event) => { searchTerm = event.target.value; renderList(); });
-$('#refreshButton').addEventListener('click', () => { if (isAdminSession()) void refreshTickets(); });
+$('#refreshButton').addEventListener('click', () => { void refreshTickets(); });
 $('#profileButton').addEventListener('click', openProfileModal);
 $('#homeLink').addEventListener('click', (event) => { event.preventDefault(); setView('home'); });
 $('#createProfileButton').addEventListener('click', showOnboarding);
@@ -1084,7 +1020,6 @@ $('#newFormAreaInput').addEventListener('keydown', (event) => { if (event.key ==
 $('#resetFormConfigButton').addEventListener('click', resetFormConfig);
 $('#formThemeModeInput').addEventListener('change', renderFormThemeFields);
 $('#areaInput').addEventListener('change', () => renderSubareaOptions($('#areaInput').value, ''));
-$('#adminAuthForm')?.addEventListener('submit', submitAdminAuth);
 document.addEventListener('click', (event) => {
   const viewButton = event.target.closest('[data-view]');
   if (viewButton) setView(viewButton.dataset.view);

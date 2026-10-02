@@ -1,29 +1,17 @@
-require('dotenv').config();
-
 const crypto = require('node:crypto');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const express = require('express');
-const session = require('express-session');
 const { MESA_FORM_DEFAULTS, normalizeMesaFormConfig } = require('./form-config');
 
 const app = express();
-const PORT = Number(process.env.PORT || 3000);
-const HOST = process.env.HOST || '127.0.0.1';
-const DATA_DIR = path.resolve(process.env.DATA_DIR || path.join(__dirname, 'data'));
+const PORT = 3000;
+const HOST = '127.0.0.1';
+const DATA_DIR = path.join(__dirname, 'data');
 const TICKETS_FILE = path.join(DATA_DIR, 'tickets.json');
 const FORM_CONFIG_FILE = path.join(DATA_DIR, 'form-config.json');
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
-const SESSION_SECRET = process.env.SESSION_SECRET || '';
 const TICKET_STATUSES = new Set(['new', 'review', 'qa', 'blocked', 'done']);
 let writeQueue = Promise.resolve();
-
-if (!ADMIN_PASSWORD || ADMIN_PASSWORD.length < 12) {
-  throw new Error('Configura ADMIN_PASSWORD con al menos 12 caracteres en .env.');
-}
-if (!SESSION_SECRET || SESSION_SECRET.length < 32) {
-  throw new Error('Configura SESSION_SECRET con al menos 32 caracteres en .env.');
-}
 
 async function readJson(file, fallback) {
   try {
@@ -104,50 +92,15 @@ function nextTicketId(tickets) {
   return `JUL-${String(max + 1).padStart(4, '0')}`;
 }
 
-function requireAdmin(req, res, next) {
-  if (req.session.adminAuthenticated) return next();
-  res.status(401).json({ error: 'Inicia sesión como administrador para continuar.' });
-}
-
-function sameSecret(candidate, expected) {
-  const a = crypto.createHash('sha256').update(candidate).digest();
-  const b = crypto.createHash('sha256').update(expected).digest();
-  return crypto.timingSafeEqual(a, b);
-}
-
 app.disable('x-powered-by');
 app.use(express.json({ limit: '40kb' }));
-app.use(session({
-  name: 'mesa.sid',
-  secret: SESSION_SECRET,
-  resave: false,
-  saveUninitialized: false,
-  cookie: { httpOnly: true, sameSite: 'strict', secure: process.env.NODE_ENV === 'production', maxAge: 8 * 60 * 60 * 1000 }
-}));
 
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
-app.get('/api/session', (req, res) => res.json({ authenticated: Boolean(req.session.adminAuthenticated) }));
-app.post('/api/session', (req, res, next) => {
-  const password = typeof req.body?.password === 'string' ? req.body.password : '';
-  if (!sameSecret(password, ADMIN_PASSWORD)) return res.status(401).json({ error: 'La contraseña no es correcta.' });
-  req.session.regenerate((error) => {
-    if (error) return next(error);
-    req.session.adminAuthenticated = true;
-    req.session.save((saveError) => saveError ? next(saveError) : res.status(204).end());
-  });
-});
-app.delete('/api/session', (req, res, next) => {
-  req.session.destroy((error) => {
-    if (error) return next(error);
-    res.clearCookie('mesa.sid', { httpOnly: true, sameSite: 'strict', secure: process.env.NODE_ENV === 'production' });
-    res.status(204).end();
-  });
-});
 
 app.get('/api/form-config', async (_req, res, next) => {
   try { res.json({ config: await getFormConfig() }); } catch (error) { next(error); }
 });
-app.put('/api/form-config', requireAdmin, async (req, res, next) => {
+app.put('/api/form-config', async (req, res, next) => {
   try {
     const config = normalizeMesaFormConfig(req.body?.config);
     await queueWrite(() => writeJson(FORM_CONFIG_FILE, config));
@@ -173,13 +126,13 @@ async function createTicket(input, source) {
 app.post('/api/public/tickets', async (req, res, next) => {
   try { res.status(201).json(await createTicket(req.body || {}, 'public')); } catch (error) { next(error); }
 });
-app.get('/api/tickets', requireAdmin, async (_req, res, next) => {
+app.get('/api/tickets', async (_req, res, next) => {
   try { res.json(await getTickets()); } catch (error) { next(error); }
 });
-app.post('/api/tickets', requireAdmin, async (req, res, next) => {
+app.post('/api/tickets', async (req, res, next) => {
   try { res.status(201).json(await createTicket(req.body || {}, 'desk')); } catch (error) { next(error); }
 });
-app.patch('/api/tickets/:id', requireAdmin, async (req, res, next) => {
+app.patch('/api/tickets/:id', async (req, res, next) => {
   try {
     const updated = await queueWrite(async () => {
       const tickets = await getTickets();

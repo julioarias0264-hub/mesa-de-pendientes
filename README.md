@@ -1,44 +1,37 @@
 # Mesa de trabajo de Julio
 
-Aplicación local en español para recibir solicitudes de cualquier tipo, organizar una cola de tickets, asignar prioridades y estados, y consultar el historial. Las áreas, tipos, prioridades y detalles se pueden adaptar desde la mesa a distintos equipos y proyectos. Express sirve la interfaz y la API; los tickets y la configuración se guardan en archivos JSON locales, sin depender de una industria ni de servicios externos.
+Aplicación local en español para recibir solicitudes, organizar tickets y consultar su historial. Express sirve la interfaz y la API; los tickets y la configuración se guardan en archivos JSON dentro de `data/`.
 
 ## Requisitos
 
 - Node.js 20 o posterior
 - npm
 
-## Instalación y configuración
+## Instalar y ejecutar
+
+Desde una terminal, clona, instala y ejecuta el proyecto con este comando:
 
 ```bash
-npm install
-cp .env.example .env
+git clone https://github.com/julioarias0264-hub/mesa-de-trabajo-julio.git && cd mesa-de-trabajo-julio && npm install && npm start
 ```
 
-Edita `.env` y define `ADMIN_PASSWORD` (al menos 12 caracteres) y `SESSION_SECRET` (al menos 32 caracteres). Puedes cambiar el puerto con `PORT` y la carpeta de datos JSON con `DATA_DIR`. El valor predeterminado de `DATA_DIR` es `./data`; esa carpeta está excluida de Git.
+Abre [http://localhost:3000](http://localhost:3000). La mesa inicia con el perfil Julio y no requiere contraseña ni archivo `.env`. El formulario para recibir solicitudes está en [http://localhost:3000/solicitar.html](http://localhost:3000/solicitar.html).
 
-## Ejecutar
-
-```bash
-npm start
-```
-
-Abre [http://localhost:3000](http://localhost:3000) e inicia sesión con `ADMIN_PASSWORD`. El formulario para nuevas solicitudes está en [http://localhost:3000/solicitar.html](http://localhost:3000/solicitar.html). La sesión administrativa dura ocho horas.
+La cola y su configuración se guardan en `data/` y permanecen disponibles al reiniciar el servidor. Para detenerlo, pulsa `Ctrl+C` en la terminal.
 
 ## Recorrido de demo
 
-1. Entra en la mesa con la contraseña de administrador.
-2. Abre el formulario público en otra pestaña y envía una solicitud completa.
+1. Abre la mesa en `http://localhost:3000`.
+2. Abre el formulario en otra pestaña y envía una solicitud completa.
 3. Vuelve a la mesa y pulsa actualizar para ver el nuevo ticket.
 4. Cambia su prioridad o estado, guárdalo y revisa las vistas de cola e historial.
-5. Reinicia el servidor con `Ctrl+C` y `npm start`; el ticket permanecerá en `data/tickets.json`.
+5. Reinicia el servidor; el ticket seguirá guardado en `data/tickets.json`.
 6. Prueba un envío sin asunto, descripción o criterio de aceptación: el servidor lo rechazará y mostrará el error.
 
-Los campos del formulario y la apariencia se editan desde la mesa y se guardan en `data/form-config.json`. Las preferencias de perfil de interfaz permanecen en `localStorage`; los tickets no se guardan allí.
+Los campos del formulario y su apariencia se editan desde la mesa y se guardan en `data/form-config.json`. Las preferencias de perfil permanecen en el navegador.
 
 ## API principal
 
-- `POST /api/public/tickets`: crear solicitud pública (sin sesión).
-- `GET /api/tickets`, `POST /api/tickets`, `PATCH /api/tickets/:id`: cola y gestión protegidas por sesión administrativa.
-- `GET /api/form-config`: leer opciones públicas del formulario.
-- `PUT /api/form-config`: actualizar opciones (requiere sesión).
-- `GET`, `POST`, `DELETE /api/session`: consultar, iniciar y cerrar sesión.
+- `POST /api/public/tickets`: crear una solicitud desde el formulario.
+- `GET /api/tickets`, `POST /api/tickets`, `PATCH /api/tickets/:id`: consultar y gestionar tickets.
+- `GET /api/form-config`, `PUT /api/form-config`: consultar y cambiar las opciones del formulario.
