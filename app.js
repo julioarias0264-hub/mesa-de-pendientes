@@ -1,4 +1,3 @@
-const STORAGE_KEY = 'julio-ticket-intake-v2';
 const PROFILES_KEY = 'julio-ticket-profiles-v1';
 const ACTIVE_PROFILE_KEY = 'julio-active-profile-v1';
 
@@ -13,20 +12,14 @@ const COLOR_OPTIONS = [
 ];
 
 const DEFAULT_CATEGORIES = ['Clientes', 'Administración', 'Desarrollo', 'Automatización', 'Operación', 'Personal', 'Documentación', 'Odoo'];
-const seedTickets = [];
 const statusLabels = { new: 'Nuevo', review: 'En revisión', qa: 'Listo para avanzar', blocked: 'Bloqueado', done: 'Cerrado' };
 const FORM_CONFIG_KEY = 'julio-form-config-v1';
 const DEFAULT_FORM_CONFIG = window.MESA_FORM_DEFAULTS || { areas: [{ name: 'Odoo', subareas: ['PDV', 'Inventario', 'Ventas', 'Compras'] }], types: ['Solicitud', 'Bug', 'Mejora'], priorities: ['Media', 'Alta', 'Baja'], theme: { mode: 'workspace', accent: '#f06a3c', hot: '#ff8051', ink: '#9c361b', initials: 'J', workspaceName: 'Julio' } };
-const supabaseConfig = window.MESA_SUPABASE || {};
-const supabaseClient = window.supabase?.createClient && supabaseConfig.url && supabaseConfig.publishableKey
-  ? window.supabase.createClient(supabaseConfig.url, supabaseConfig.publishableKey)
-  : null;
-const cloudEnabled = Boolean(supabaseClient);
 
 let profiles = loadProfiles();
 let activeProfileId = localStorage.getItem(ACTIVE_PROFILE_KEY) || profiles[0]?.id || null;
 let currentProfile = profiles.find((profile) => profile.id === activeProfileId) || null;
-let tickets = currentProfile ? loadTicketsForProfile(currentProfile.id) : [];
+let tickets = [];
 let formConfig = loadFormConfig();
 let selectedId = tickets[0]?.id || null;
 let activeFilter = 'all';
@@ -35,9 +28,8 @@ let searchTerm = '';
 let isNewTicket = false;
 let onboardingColor = COLOR_OPTIONS[0].value;
 let profileDraft = null;
-let cloudUser = null;
-let localOnlySession = false;
-let cloudAuthMode = 'login';
+let adminSession = null;
+
 let formConfigDraft = null;
 
 const $ = (selector) => document.querySelector(selector);
@@ -103,121 +95,86 @@ function persistProfiles() {
   localStorage.setItem(PROFILES_KEY, JSON.stringify(profiles));
 }
 
-function loadTicketsForProfile(profileId) {
-  const scopedKey = `${STORAGE_KEY}:${profileId}`;
-  try {
-    const scoped = localStorage.getItem(scopedKey);
-    if (scoped !== null) {
-      const saved = JSON.parse(scoped);
-      return Array.isArray(saved) ? saved : [];
-    }
-    const legacy = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    return Array.isArray(legacy) ? legacy : clone(seedTickets);
-  } catch (error) {
-    return clone(seedTickets);
-  }
-}
-
 function persist() {
-  if (activeProfileId) localStorage.setItem(`${STORAGE_KEY}:${activeProfileId}`, JSON.stringify(tickets));
+  // Los tickets se guardan únicamente en el servidor, en DATA_DIR.
 }
 
-function isCloudSession() {
-  return Boolean(cloudEnabled && cloudUser && !localOnlySession);
+function isAdminSession() {
+  return Boolean(adminSession);
 }
 
-function formatCloudTime(value) {
+async function apiRequest(url, options = {}) {
+  const response = await fetch(url, {
+    credentials: 'same-origin',
+    ...options,
+    headers: { ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...(options.headers || {}) }
+  });
+  if (response.status === 204) return null;
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error = new Error(body.error || 'No se pudo completar la solicitud.');
+    error.status = response.status;
+    if (response.status === 401 && adminSession) { adminSession = null; showAuthGate(); }
+    throw error;
+  }
+  return body;
+}
+
+function formatTicketTime(value) {
   if (!value) return '';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
   return `el ${date.toLocaleDateString('es-MX', { day: '2-digit', month: 'short' }).replace('.', '')} a las ${date.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}`;
 }
 
-function mapCloudTicket(row) {
+function mapTicket(row) {
   return {
-    id: row.code,
-    title: row.title || '',
-    description: row.description || '',
-    area: row.area || '',
-    subarea: row.subarea || '',
-    type: row.type || '',
-    priority: row.priority || '',
-    module: row.module || '',
-    requester: row.requester || '',
-    requester_email: row.requester_email || '',
-    environment: row.environment || 'Cliente',
-    acceptance: row.acceptance || '',
-    status: row.status || 'new',
-    source: row.source || 'public',
-    updated: formatCloudTime(row.updated_at),
-    createdAt: row.created_at || ''
+    id: row.id,
+    title: row.title || '', description: row.description || '', area: row.area || '', subarea: row.subarea || '',
+    type: row.type || '', priority: row.priority || '', module: row.module || '', requester: row.requester || '',
+    requester_email: row.requester_email || '', environment: row.environment || 'Cliente', acceptance: row.acceptance || '',
+    status: row.status || 'new', source: row.source || 'public', updated: formatTicketTime(row.updatedAt || row.updated),
+    createdAt: row.createdAt || ''
   };
 }
 
-function ticketToCloudRow(ticket) {
-  return {
-    code: ticket.id,
-    title: ticket.title,
-    description: ticket.description,
-    area: ticket.area,
-    subarea: ticket.subarea || '',
-    type: ticket.type,
-    priority: ticket.priority,
-    module: ticket.module || '',
-    requester: ticket.requester || '',
-    requester_email: ticket.requester_email || '',
-    environment: ticket.environment || 'Local',
-    acceptance: ticket.acceptance,
-    status: ticket.status || 'new',
-    source: ticket.source || 'desk'
-  };
-}
-
-async function refreshCloudTickets({ quiet = false } = {}) {
-  if (!isCloudSession()) return false;
-  const { data, error } = await supabaseClient.from('tickets').select('*').order('created_at', { ascending: false });
-  if (error) {
+async function refreshTickets({ quiet = false } = {}) {
+  if (!isAdminSession()) return false;
+  try {
+    tickets = (await apiRequest('/api/tickets')).map(mapTicket);
+    selectedId = tickets[0]?.id || null;
+    if (tickets[0]) { isNewTicket = false; fillForm(tickets[0]); }
+    else { isNewTicket = true; clearForm(); }
+    renderList();
+    setView(activeView);
+    updateSyncStatus();
+    if (!quiet) showToast('Cola actualizada.');
+    return true;
+  } catch (error) {
     console.error(error);
-    if (!quiet) showToast('No se pudo actualizar la cola en la nube.');
+    if (!quiet) showToast('No se pudo actualizar la cola.');
     return false;
   }
-  tickets = (data || []).map(mapCloudTicket);
-  selectedId = tickets[0]?.id || null;
-  if (tickets[0]) {
-    isNewTicket = false;
-    fillForm(tickets[0]);
-  } else {
-    isNewTicket = true;
-    clearForm();
-  }
-  persist();
-  renderList();
-  setView(activeView);
-  updateSyncStatus();
-  if (!quiet) showToast('Cola sincronizada.');
-  return true;
 }
 
-async function refreshCloudFormConfig({ quiet = false } = {}) {
-  if (!isCloudSession()) return false;
-  const { data, error } = await supabaseClient.from('form_config').select('config').eq('id', 1).maybeSingle();
-  if (error) {
+async function refreshFormConfig({ quiet = false } = {}) {
+  try {
+    const data = await apiRequest('/api/form-config');
+    if (data?.config) {
+      formConfig = normalizeFormConfig(data.config);
+      persistFormConfig();
+      renderFormOptions();
+    }
+    return true;
+  } catch (error) {
     console.error(error);
     if (!quiet) showToast('No se pudo actualizar la configuración del formulario.');
     return false;
   }
-  if (data?.config) {
-    formConfig = normalizeFormConfig(data.config);
-    persistFormConfig();
-    renderFormOptions();
-  }
-  return true;
 }
 
-async function saveCloudFormConfig() {
-  if (!isCloudSession()) return true;
-  const { error } = await supabaseClient.from('form_config').upsert({ id: 1, config: formConfig }, { onConflict: 'id' });
-  if (error) throw error;
+async function saveServerFormConfig() {
+  await apiRequest('/api/form-config', { method: 'PUT', body: JSON.stringify({ config: formConfig }) });
   return true;
 }
 
@@ -233,32 +190,26 @@ function getWorkspaceTheme() {
   };
 }
 
-function syncFormThemeFromWorkspace({ remote = false } = {}) {
+function syncFormThemeFromWorkspace({ saveToServer = false } = {}) {
   if (!currentProfile || formConfig.theme?.mode === 'custom') return;
   formConfig.theme = getWorkspaceTheme();
   persistFormConfig();
-  if (remote) void saveCloudFormConfig().catch((error) => console.error('No se pudo sincronizar la apariencia del formulario.', error));
+  if (saveToServer) void saveServerFormConfig().catch((error) => console.error('No se pudo guardar la apariencia del formulario.', error));
 }
 
-async function cloudInsertTicket(ticket) {
-  if (!isCloudSession()) return ticket;
-  const { data, error } = await supabaseClient.from('tickets').insert(ticketToCloudRow(ticket)).select('*').single();
-  if (error) throw error;
-  return mapCloudTicket(data);
+async function createServerTicket(ticket) {
+  const created = await apiRequest('/api/tickets', { method: 'POST', body: JSON.stringify(ticket) });
+  return mapTicket(created);
 }
 
-async function cloudUpdateTicket(ticket) {
-  if (!isCloudSession()) return ticket;
-  const { data, error } = await supabaseClient.from('tickets').update(ticketToCloudRow(ticket)).eq('code', ticket.id).select('*').single();
-  if (error) throw error;
-  return mapCloudTicket(data);
+async function updateServerTicket(ticket) {
+  const updated = await apiRequest(`/api/tickets/${encodeURIComponent(ticket.id)}`, { method: 'PATCH', body: JSON.stringify(ticket) });
+  return mapTicket(updated);
 }
 
-async function cloudUpdateStatus(ticket) {
-  if (!isCloudSession()) return ticket;
-  const { data, error } = await supabaseClient.from('tickets').update({ status: ticket.status }).eq('code', ticket.id).select('*').single();
-  if (error) throw error;
-  return mapCloudTicket(data);
+async function updateServerTicketStatus(ticket) {
+  const updated = await apiRequest(`/api/tickets/${encodeURIComponent(ticket.id)}`, { method: 'PATCH', body: JSON.stringify({ status: ticket.status }) });
+  return mapTicket(updated);
 }
 
 function priorityClass(priority) {
@@ -470,7 +421,7 @@ async function saveTicket(event) {
     if (isNewTicket) {
       const nextNumber = Math.max(...tickets.map((ticket) => Number(String(ticket.id).replace(/\D/g, ''))), 0) + 1;
       let ticket = { id: `JUL-${String(nextNumber).padStart(4, '0')}`, ...data, status: 'new', updated: `a las ${now}`, source: 'desk' };
-      ticket = await cloudInsertTicket(ticket);
+      ticket = await createServerTicket(ticket);
       tickets = [ticket, ...tickets.filter((item) => item.id !== ticket.id)];
       selectedId = ticket.id;
       isNewTicket = false;
@@ -478,17 +429,17 @@ async function saveTicket(event) {
       const index = tickets.findIndex((ticket) => ticket.id === selectedId);
       if (index !== -1) {
         let ticket = { ...tickets[index], ...data, updated: `a las ${now}` };
-        ticket = await cloudUpdateTicket(ticket);
+        ticket = await updateServerTicket(ticket);
         tickets[index] = ticket;
       }
     }
     persist();
     renderList();
     selectTicket(selectedId);
-    showToast(isCloudSession() ? 'Ticket sincronizado en la nube.' : 'Ticket guardado en la mesa.');
+    showToast('Ticket guardado en la mesa.');
   } catch (error) {
     console.error(error);
-    showFormError('No se pudo guardar en la nube. Revisa la configuración de Supabase e inténtalo de nuevo.');
+    showFormError(error.message || 'No se pudo guardar el ticket. Revisa que el servidor siga activo e inténtalo de nuevo.');
     showToast('No se pudo guardar el ticket.');
   } finally {
     saveButton.disabled = false;
@@ -508,7 +459,7 @@ async function advanceStatus() {
   const button = $('#advanceStatusButton');
   button.disabled = true;
   try {
-    const updated = await cloudUpdateStatus(ticket);
+    const updated = await updateServerTicketStatus(ticket);
     Object.assign(ticket, updated);
     persist();
     updateStatus(ticket.status);
@@ -633,13 +584,13 @@ function applyProfileTheme() {
 function updateSyncStatus() {
   const node = $('#syncStatus');
   if (!node) return;
-  node.textContent = isCloudSession() ? 'Sincronizado en la nube' : 'Guardado local';
+  node.textContent = isAdminSession() ? 'Guardado en el servidor local' : 'Sesión cerrada';
 }
 
 function updateProfileSummary() {
   if (!currentProfile) return;
   $('#brandMark').textContent = currentProfile.initials[0] || 'J';
-  $('#brandWorkspace').textContent = `${currentProfile.name} · espacio de trabajo local`;
+  $('#brandWorkspace').textContent = `${currentProfile.name} · mesa local`;
   $('#profileButton').textContent = currentProfile.initials;
   $('#profileButton').setAttribute('aria-label', `Abrir perfil de ${currentProfile.name}`);
   $('#railWorkspace').textContent = currentProfile.name.toUpperCase();
@@ -651,7 +602,7 @@ function updateProfileSummary() {
 
 function initializeWorkspace() {
   applyProfileTheme();
-  syncFormThemeFromWorkspace({ remote: isCloudSession() });
+  syncFormThemeFromWorkspace({ saveToServer: isAdminSession() });
   updateProfileSummary();
   renderCategoryOptions();
   renderFilterChips();
@@ -695,28 +646,26 @@ function showOnboarding() {
   setTimeout(() => $('#onboardingName').focus(), 0);
 }
 
-function setCloudAuthStatus(message, success = false) {
-  const node = $('#cloudAuthStatus');
+function setAdminAuthStatus(message, success = false) {
+  const node = $('#adminAuthStatus');
   if (!node) return;
   node.textContent = message;
   node.classList.toggle('is-success', success);
 }
 
-function renderCloudAuthPanel() {
-  const panel = $('#cloudAuthPanel');
+function renderAdminAuthPanel() {
+  const panel = $('#adminAuthPanel');
   if (!panel) return;
-  panel.classList.toggle('is-hidden', !cloudEnabled || Boolean(cloudUser) || localOnlySession);
-  const isSignup = cloudAuthMode === 'signup';
-  $('#cloudAuthTitle').textContent = isSignup ? 'Crea tu acceso en la nube' : 'Entra a tu mesa en la nube';
-  $('#cloudAuthCopy').textContent = isSignup ? 'Crea una cuenta para que sólo tú puedas leer y administrar los tickets.' : 'Usa el correo y contraseña de tu usuario de Supabase Auth.';
-  $('#cloudAuthSubmit').textContent = isSignup ? 'Crear cuenta' : 'Entrar a la nube';
-  $('#cloudAuthToggle').textContent = isSignup ? 'Ya tengo una cuenta' : 'Crear una cuenta nueva';
+  panel.classList.toggle('is-hidden', Boolean(adminSession));
+  $('#adminAuthTitle').textContent = 'Acceso de administrador';
+  $('#adminAuthCopy').textContent = 'Ingresa la contraseña configurada para abrir la cola de solicitudes.';
+  $('#adminAuthSubmit').textContent = 'Entrar';
 }
 
 function showAuthGate() {
   $('#authGate').setAttribute('aria-hidden', 'false');
-  renderCloudAuthPanel();
-  if (cloudEnabled && !cloudUser && !localOnlySession) {
+  renderAdminAuthPanel();
+  if (!adminSession) {
     $('#profilePicker').classList.add('is-hidden');
     $('#onboardingForm').classList.add('is-hidden');
     return;
@@ -728,49 +677,35 @@ function hideAuthGate() {
   $('#authGate').setAttribute('aria-hidden', 'true');
 }
 
-function showLocalMode() {
-  localOnlySession = true;
-  renderCloudAuthPanel();
-  if (profiles.length) showProfilePicker(); else showOnboarding();
-}
-
-async function submitCloudAuth(event) {
+async function submitAdminAuth(event) {
   event.preventDefault();
-  if (!supabaseClient) return;
-  const email = $('#cloudEmailInput').value.trim();
-  const password = $('#cloudPasswordInput').value;
-  const button = $('#cloudAuthSubmit');
+  const password = $('#adminPasswordInput').value;
+  const button = $('#adminAuthSubmit');
   button.disabled = true;
-  setCloudAuthStatus(cloudAuthMode === 'signup' ? 'Creando cuenta…' : 'Entrando…');
-  const result = cloudAuthMode === 'signup'
-    ? await supabaseClient.auth.signUp({ email, password })
-    : await supabaseClient.auth.signInWithPassword({ email, password });
-  button.disabled = false;
-  if (result.error) {
-    console.error(result.error);
-    setCloudAuthStatus(result.error.message || 'No se pudo completar el acceso.');
-    return;
+  setAdminAuthStatus('Verificando acceso…');
+  try {
+    await apiRequest('/api/session', { method: 'POST', body: JSON.stringify({ password }) });
+    adminSession = { authenticated: true };
+    $('#adminPasswordInput').value = '';
+    setAdminAuthStatus('Acceso correcto.', true);
+    await enterWorkspace();
+  } catch (error) {
+    setAdminAuthStatus(error.status === 401 ? 'La contraseña no es correcta.' : error.message || 'No se pudo iniciar sesión.');
+  } finally {
+    button.disabled = false;
   }
-  if (cloudAuthMode === 'signup' && !result.data.session) {
-    setCloudAuthStatus('Revisa tu correo para confirmar la cuenta y después vuelve a entrar.', true);
-    return;
-  }
-  cloudUser = result.data.user;
-  localOnlySession = false;
-  setCloudAuthStatus('Acceso correcto.', true);
-  await enterCloudWorkspace();
 }
 
-async function enterCloudWorkspace() {
-  const synced = await refreshCloudTickets({ quiet: true });
+async function enterWorkspace() {
+  const synced = await refreshTickets({ quiet: true });
   if (!synced) {
-    await supabaseClient.auth.signOut();
-    setCloudAuthStatus('Falta crear las tablas de la mesa. Ejecuta supabase-schema.sql completo en Supabase → SQL Editor y vuelve a intentarlo.', false);
+    adminSession = null;
+    setAdminAuthStatus('No se pudo leer la cola. Revisa que el servidor siga activo e inténtalo de nuevo.');
     showAuthGate();
     return;
   }
-  await refreshCloudFormConfig({ quiet: true });
-  renderCloudAuthPanel();
+  await refreshFormConfig({ quiet: true });
+  renderAdminAuthPanel();
   if (currentProfile) {
     hideAuthGate();
     initializeWorkspace();
@@ -780,24 +715,15 @@ async function enterCloudWorkspace() {
   }
 }
 
-async function bootCloud() {
-  if (!cloudEnabled) {
-    if (currentProfile) initializeWorkspace(); else showAuthGate();
-    return;
-  }
-  const { data } = await supabaseClient.auth.getSession();
-  cloudUser = data.session?.user || null;
-  supabaseClient.auth.onAuthStateChange((_event, session) => {
-    cloudUser = session?.user || null;
-    if (cloudUser && !localOnlySession) void enterCloudWorkspace();
-    if (!cloudUser && !localOnlySession) showAuthGate();
-    updateSyncStatus();
-  });
-  if (cloudUser) {
-    await enterCloudWorkspace();
-  } else if (currentProfile && !localOnlySession) {
-    showAuthGate();
-  } else {
+async function bootApp() {
+  try {
+    const session = await apiRequest('/api/session');
+    adminSession = session?.authenticated ? { authenticated: true } : null;
+    if (adminSession) await enterWorkspace();
+    else showAuthGate();
+  } catch (error) {
+    adminSession = null;
+    setAdminAuthStatus('No se pudo conectar con el servidor local. Inícialo con npm start e inténtalo de nuevo.');
     showAuthGate();
   }
 }
@@ -819,13 +745,14 @@ function loginProfile(profileId) {
   activeProfileId = profile.id;
   currentProfile = profile;
   localStorage.setItem(ACTIVE_PROFILE_KEY, activeProfileId);
-  if (!isCloudSession()) tickets = loadTicketsForProfile(activeProfileId);
+  tickets = tickets || [];
+  selectedId = tickets[0]?.id || null;
   activeFilter = 'all';
   searchTerm = '';
   $('#searchInput').value = '';
   hideAuthGate();
   initializeWorkspace();
-  showToast(`${isCloudSession() ? 'Mesa sincronizada' : 'Bienvenido'}, ${currentProfile.name}.`);
+  showToast(`${isAdminSession() ? 'Mesa abierta' : 'Bienvenido'}, ${currentProfile.name}.`);
 }
 
 function readFormConfigDraft() {
@@ -972,13 +899,13 @@ async function saveFormConfig(event) {
   try {
     formConfig = normalized;
     persistFormConfig();
-    await saveCloudFormConfig();
+    await saveServerFormConfig();
     renderFormOptions();
     closeFormConfigModal();
-    showToast(isCloudSession() ? 'Formulario público sincronizado.' : 'Formulario público actualizado en este navegador.');
+    showToast('Formulario público actualizado.');
   } catch (error) {
     console.error(error);
-    showFormConfigError('No se pudo sincronizar la configuración. Revisa tu sesión e inténtalo de nuevo.');
+    showFormConfigError('No se pudo guardar la configuración. Revisa que el servidor siga activo e inténtalo de nuevo.');
   } finally {
     saveButton.disabled = false;
   }
@@ -1059,7 +986,7 @@ function saveProfile(event) {
   currentProfile = updated;
   persistProfiles();
   applyProfileTheme();
-  syncFormThemeFromWorkspace({ remote: isCloudSession() });
+  syncFormThemeFromWorkspace({ saveToServer: isAdminSession() });
   updateProfileSummary();
   renderHome();
   renderCategoryOptions();
@@ -1068,8 +995,10 @@ function saveProfile(event) {
   showToast('Perfil y categorías actualizados.');
 }
 
-function logoutProfile() {
+async function logoutProfile() {
   closeProfileModal();
+  try { await apiRequest('/api/session', { method: 'DELETE' }); } catch (error) { console.error(error); }
+  adminSession = null;
   localStorage.removeItem(ACTIVE_PROFILE_KEY);
   currentProfile = null;
   activeProfileId = null;
@@ -1129,7 +1058,7 @@ $('#homeProfileButton').addEventListener('click', openProfileModal);
 $('#formConfigButton').addEventListener('click', openFormConfigModal);
 $('#discardButton').addEventListener('click', () => { if (isNewTicket) { if (tickets[0]) selectTicket(tickets[0].id); else clearForm(); } else selectTicket(selectedId); showToast('Cambios descartados.'); });
 $('#searchInput').addEventListener('input', (event) => { searchTerm = event.target.value; renderList(); });
-$('#refreshButton').addEventListener('click', () => { if (isCloudSession()) void refreshCloudTickets(); else { renderList(); showToast('Cola actualizada.'); } });
+$('#refreshButton').addEventListener('click', () => { if (isAdminSession()) void refreshTickets(); });
 $('#profileButton').addEventListener('click', openProfileModal);
 $('#homeLink').addEventListener('click', (event) => { event.preventDefault(); setView('home'); });
 $('#createProfileButton').addEventListener('click', showOnboarding);
@@ -1147,13 +1076,7 @@ $('#newFormAreaInput').addEventListener('keydown', (event) => { if (event.key ==
 $('#resetFormConfigButton').addEventListener('click', resetFormConfig);
 $('#formThemeModeInput').addEventListener('change', renderFormThemeFields);
 $('#areaInput').addEventListener('change', () => renderSubareaOptions($('#areaInput').value, ''));
-$('#cloudAuthForm')?.addEventListener('submit', submitCloudAuth);
-$('#cloudAuthToggle')?.addEventListener('click', () => {
-  cloudAuthMode = cloudAuthMode === 'login' ? 'signup' : 'login';
-  setCloudAuthStatus('');
-  renderCloudAuthPanel();
-});
-$('#cloudLocalButton')?.addEventListener('click', showLocalMode);
+$('#adminAuthForm')?.addEventListener('submit', submitAdminAuth);
 document.addEventListener('click', (event) => {
   const viewButton = event.target.closest('[data-view]');
   if (viewButton) setView(viewButton.dataset.view);
@@ -1172,4 +1095,4 @@ window.addEventListener('resize', updateScrollHint);
 const authMark = document.querySelector('.auth-mark');
 if (authMark) authMark.id = 'authMark';
 
-void bootCloud();
+void bootApp();

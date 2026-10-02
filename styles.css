@@ -382,31 +382,29 @@ h1 { margin-bottom: 12px; color: var(--paper); font-size: clamp(32px, 3.8vw, 52p
 .auth-kicker { margin: 0 0 12px; color: var(--profile-color, var(--orange-hot)); font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: .14em; }
 .auth-card h2, .profile-dialog h2 { margin: 0; color: var(--paper); font-size: clamp(26px, 4vw, 34px); line-height: .98; letter-spacing: -.06em; }
 .auth-copy, .dialog-copy { max-width: 40ch; margin: 14px 0 28px; color: var(--muted); font-size: 12px; line-height: 1.6; }
-.cloud-auth-panel { margin: -8px 0 24px; padding: 17px; border: 1px solid var(--line); background: rgba(244, 242, 235, .035); }
-.cloud-auth-panel.is-hidden { display: none; }
-.cloud-auth-kicker, .public-kicker { margin: 0 0 9px; color: var(--profile-color, var(--orange-hot)); font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: .14em; }
-.cloud-auth-panel h3 { margin: 0; color: var(--paper); font-size: 18px; letter-spacing: -.04em; }
-.cloud-auth-copy { margin: 8px 0 15px; color: var(--muted); font-size: 11px; line-height: 1.5; }
-.cloud-auth-form { display: grid; gap: 13px; }
-.cloud-auth-form .field { gap: 6px; }
-.cloud-auth-form .field span { color: var(--muted); }
-.cloud-auth-form input { height: 39px; appearance: none; color-scheme: dark; border: 1px solid var(--line); background: var(--ink-soft) !important; color: var(--paper) !important; caret-color: var(--paper); padding: 10px 11px; font-size: 12px; }
-.cloud-auth-form input:focus { outline: 0; border-color: var(--profile-color, var(--orange)); }
-.cloud-auth-form input::placeholder { color: var(--muted); opacity: 1; }
-.cloud-auth-form input:-webkit-autofill,
-.cloud-auth-form input:-webkit-autofill:hover,
-.cloud-auth-form input:-webkit-autofill:focus,
-.cloud-auth-form input:-webkit-autofill:active {
+.admin-auth-panel { margin: -8px 0 24px; padding: 17px; border: 1px solid var(--line); background: rgba(244, 242, 235, .035); }
+.admin-auth-panel.is-hidden { display: none; }
+.admin-auth-kicker, .public-kicker { margin: 0 0 9px; color: var(--profile-color, var(--orange-hot)); font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: .14em; }
+.admin-auth-panel h3 { margin: 0; color: var(--paper); font-size: 18px; letter-spacing: -.04em; }
+.admin-auth-copy { margin: 8px 0 15px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.admin-auth-form { display: grid; gap: 13px; }
+.admin-auth-form .field { gap: 6px; }
+.admin-auth-form .field span { color: var(--muted); }
+.admin-auth-form input { height: 39px; appearance: none; color-scheme: dark; border: 1px solid var(--line); background: var(--ink-soft) !important; color: var(--paper) !important; caret-color: var(--paper); padding: 10px 11px; font-size: 12px; }
+.admin-auth-form input:focus { outline: 0; border-color: var(--profile-color, var(--orange)); }
+.admin-auth-form input::placeholder { color: var(--muted); opacity: 1; }
+.admin-auth-form input:-webkit-autofill,
+.admin-auth-form input:-webkit-autofill:hover,
+.admin-auth-form input:-webkit-autofill:focus,
+.admin-auth-form input:-webkit-autofill:active {
   -webkit-box-shadow: 0 0 0 1000px var(--ink-soft) inset;
   -webkit-text-fill-color: var(--paper);
   caret-color: var(--paper);
   transition: background-color 9999s ease-out 0s;
 }
-.cloud-auth-form .button { width: 100%; }
-.cloud-auth-toggle { margin-top: 13px; padding: 0; border: 0; font-size: 10px; }
-.cloud-auth-status { min-height: 15px; margin: 11px 0 0; color: var(--orange-hot); font-family: 'DM Mono', monospace; font-size: 10px; line-height: 1.45; }
-.cloud-auth-status.is-success { color: var(--good); }
-.cloud-local-button { width: 100%; margin-top: 14px; }
+.admin-auth-form .button { width: 100%; }
+.admin-auth-status { min-height: 15px; margin: 11px 0 0; color: var(--orange-hot); font-family: 'DM Mono', monospace; font-size: 10px; line-height: 1.45; }
+.admin-auth-status.is-success { color: var(--good); }
 .profile-picker { display: grid; gap: 14px; }
 .profile-list { display: grid; gap: 8px; max-height: 210px; overflow-y: auto; }
 .profile-choice { width: 100%; padding: 13px; border: 1px solid var(--line); background: transparent; color: var(--paper); display: flex; align-items: center; gap: 11px; text-align: left; transition: border-color .16s ease, background .16s ease; }

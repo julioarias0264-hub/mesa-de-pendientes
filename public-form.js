@@ -1,8 +1,3 @@
-const config = window.MESA_SUPABASE || {};
-const supabaseClient = window.supabase?.createClient && config.url && config.publishableKey
-  ? window.supabase.createClient(config.url, config.publishableKey)
-  : null;
-
 const form = document.querySelector('#publicTicketForm');
 const submitButton = document.querySelector('#publicSubmitButton');
 const formMessage = document.querySelector('#publicFormMessage');
@@ -59,7 +54,7 @@ function renderSubareas(areaName) {
 }
 
 function escapeHtml(value) {
-  return String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
+  return String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
 }
 
 function renderFormOptions() {
@@ -72,21 +67,14 @@ function renderFormOptions() {
 }
 
 async function loadFormConfig() {
-  if (!supabaseClient) {
-    renderFormOptions();
-    return;
-  }
-  const { data, error } = await supabaseClient.from('form_config').select('config').eq('id', 1).maybeSingle();
-  if (!error && data?.config && window.normalizeMesaFormConfig) formConfig = window.normalizeMesaFormConfig(data.config);
-  applyPublicTheme();
+  try {
+    const result = await fetch('/api/form-config');
+    if (result.ok) {
+      const data = await result.json();
+      if (data.config && window.normalizeMesaFormConfig) formConfig = window.normalizeMesaFormConfig(data.config);
+    }
+  } catch (error) { console.error('No se pudo cargar la configuración del formulario.', error); }
   renderFormOptions();
-}
-
-function makeCode() {
-  const stamp = Date.now().toString(36).toUpperCase().slice(-6);
-  const random = Math.random().toString(36).slice(2, 5).toUpperCase();
-  const prefix = (formConfig.theme?.initials || 'JUL').replace(/[^a-z0-9]/gi, '').toUpperCase().slice(0, 3) || 'JUL';
-  return `${prefix}-${stamp}-${random}`;
 }
 
 function showMessage(message, type = 'error') {
@@ -96,14 +84,8 @@ function showMessage(message, type = 'error') {
 
 form?.addEventListener('submit', async (event) => {
   event.preventDefault();
-  if (!supabaseClient) {
-    showMessage('La conexión todavía no está configurada. Avísale a Julio.', 'error');
-    return;
-  }
-
   const data = new FormData(form);
   const payload = {
-    code: makeCode(),
     title: String(data.get('title') || '').trim(),
     description: String(data.get('description') || '').trim(),
     area: String(data.get('area') || '').trim(),
@@ -115,29 +97,30 @@ form?.addEventListener('submit', async (event) => {
     requester_email: String(data.get('requester_email') || '').trim(),
     environment: 'Cliente',
     acceptance: String(data.get('acceptance') || '').trim(),
-    status: 'new',
-    source: 'public'
+    status: 'new', source: 'public'
   };
 
   submitButton.disabled = true;
   submitButton.setAttribute('aria-busy', 'true');
   showMessage('Enviando solicitud…', 'loading');
-
-  const { error } = await supabaseClient.from('tickets').insert(payload);
-  submitButton.disabled = false;
-  submitButton.removeAttribute('aria-busy');
-
-  if (error) {
+  try {
+    const response = await fetch('/api/public/tickets', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || 'No se pudo enviar la solicitud.');
+    form.reset();
+    successCode.textContent = result.id;
+    successPanel.classList.add('is-visible');
+    form.classList.add('is-hidden');
+    formMessage.className = 'public-form-message';
+  } catch (error) {
     console.error(error);
-    showMessage('No se pudo enviar todavía. Revisa que Julio haya activado la mesa e inténtalo de nuevo.', 'error');
-    return;
+    showMessage(error.message || 'No se pudo enviar todavía. Inténtalo de nuevo.', 'error');
+  } finally {
+    submitButton.disabled = false;
+    submitButton.removeAttribute('aria-busy');
   }
-
-  form.reset();
-  successCode.textContent = payload.code;
-  successPanel.classList.add('is-visible');
-  form.classList.add('is-hidden');
-  formMessage.className = 'public-form-message';
 });
 
 document.querySelector('#sendAnotherButton')?.addEventListener('click', () => {
@@ -145,6 +128,5 @@ document.querySelector('#sendAnotherButton')?.addEventListener('click', () => {
   form.classList.remove('is-hidden');
   document.querySelector('#titleInput')?.focus();
 });
-
 areaSelect?.addEventListener('change', () => renderSubareas(areaSelect.value));
 void loadFormConfig();

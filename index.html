@@ -304,26 +304,20 @@
         <div class="auth-mark" aria-hidden="true">J</div>
         <p class="auth-kicker">MESA PERSONAL</p>
         <h2 id="authTitle">Entra a tu mesa de trabajo</h2>
-        <p class="auth-copy">Conecta tu mesa para recibir los tickets de tu formulario público desde cualquier dispositivo.</p>
+        <p class="auth-copy">Inicia sesión para administrar la cola de solicitudes guardada en este equipo.</p>
 
-        <section class="cloud-auth-panel is-hidden" id="cloudAuthPanel" aria-labelledby="cloudAuthTitle">
-          <p class="cloud-auth-kicker">SINCRONIZACIÓN</p>
-          <h3 id="cloudAuthTitle">Entra a tu mesa en la nube</h3>
-          <p class="cloud-auth-copy" id="cloudAuthCopy">Usa el correo y contraseña de un usuario creado en Supabase Auth.</p>
-          <form id="cloudAuthForm" class="cloud-auth-form">
+        <section class="admin-auth-panel is-hidden" id="adminAuthPanel" aria-labelledby="adminAuthTitle">
+          <p class="admin-auth-kicker">SESIÓN LOCAL</p>
+          <h3 id="adminAuthTitle">Acceso de administrador</h3>
+          <p class="admin-auth-copy" id="adminAuthCopy">Ingresa la contraseña configurada para abrir la cola de solicitudes.</p>
+          <form id="adminAuthForm" class="admin-auth-form">
             <label class="field">
-              <span>Correo</span>
-              <input id="cloudEmailInput" type="email" autocomplete="email" placeholder="tu@correo.com" required />
+              <span>Contraseña de administrador</span>
+              <input id="adminPasswordInput" type="password" autocomplete="current-password" placeholder="Contraseña" required />
             </label>
-            <label class="field">
-              <span>Contraseña</span>
-              <input id="cloudPasswordInput" type="password" minlength="6" autocomplete="current-password" placeholder="Mínimo 6 caracteres" required />
-            </label>
-            <button class="button button-primary" id="cloudAuthSubmit" type="submit">Entrar a la nube</button>
+            <button class="button button-primary" id="adminAuthSubmit" type="submit">Entrar</button>
           </form>
-          <button class="text-button cloud-auth-toggle" id="cloudAuthToggle" type="button">Crear una cuenta nueva</button>
-          <p class="cloud-auth-status" id="cloudAuthStatus" role="status"></p>
-          <button class="button button-quiet cloud-local-button" id="cloudLocalButton" type="button">Continuar sólo en este navegador</button>
+          <p class="admin-auth-status" id="adminAuthStatus" role="status"></p>
         </section>
 
         <div id="profilePicker" class="profile-picker is-hidden">
@@ -434,8 +428,6 @@
       </section>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabase-config.js"></script>
     <script src="form-config.js"></script>
     <script src="app.js"></script>
   </body>

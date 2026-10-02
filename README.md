@@ -1,38 +1,48 @@
-# Mesa de trabajo · Julio
+# Mesa de trabajo de Julio
 
-MVP local para recibir y estructurar solicitudes, bugs, pendientes y seguimientos de Julio. Odoo aparece como una categoría más, junto con clientes, administración, automatización, documentos y operación.
+Aplicación local en español para recibir solicitudes, organizar una cola de tickets, asignar prioridades y estados, y consultar el historial. Express sirve la interfaz y la API; los tickets y la configuración del formulario se guardan en archivos JSON locales. No requiere base de datos ni servicios externos.
+
+## Requisitos
+
+- Node.js 20 o posterior
+- npm
+
+## Instalación y configuración
+
+```bash
+npm install
+cp .env.example .env
+```
+
+Edita `.env` y define `ADMIN_PASSWORD` (al menos 12 caracteres) y `SESSION_SECRET` (al menos 32 caracteres). Puedes cambiar el puerto con `PORT` y la carpeta de datos JSON con `DATA_DIR`. El valor predeterminado de `DATA_DIR` es `./data`; esa carpeta está excluida de Git.
 
 ## Ejecutar
 
-Desde este directorio:
-
 ```bash
-python3 -m http.server 4173
+npm start
 ```
 
-Después abre <http://127.0.0.1:4173>.
+Abre [http://localhost:3000](http://localhost:3000) e inicia sesión con `ADMIN_PASSWORD`. El formulario para nuevas solicitudes está en [http://localhost:3000/solicitar.html](http://localhost:3000/solicitar.html). La sesión administrativa dura ocho horas.
 
-La app se sirve como sitio estático y carga el cliente de Supabase desde CDN. El perfil visual y la caché local se guardan en `localStorage`; cuando la cuenta de Supabase está conectada, la cola se sincroniza en la nube.
+## Recorrido de demo
 
-## Activar Supabase
+1. Entra en la mesa con la contraseña de administrador.
+2. Abre el formulario público en otra pestaña y envía una solicitud completa.
+3. Vuelve a la mesa y pulsa actualizar para ver el nuevo ticket.
+4. Cambia su prioridad o estado, guárdalo y revisa las vistas de cola e historial.
+5. Reinicia el servidor con `Ctrl+C` y `npm start`; el ticket permanecerá en `data/tickets.json`.
+6. Prueba un envío sin asunto, descripción o criterio de aceptación: el servidor lo rechazará y mostrará el error.
 
-1. Abre `supabase-schema.sql` y ejecuta todo su contenido en **Supabase → SQL Editor**.
-2. En **Authentication → Users**, crea el usuario que utilizará Julio para entrar a la mesa.
-3. La mesa principal usa `index.html` y el formulario público para compartir es `solicitar.html`.
+Los campos del formulario y la apariencia se editan desde la mesa y se guardan en `data/form-config.json`. Las preferencias de perfil de interfaz permanecen en `localStorage`; los tickets no se guardan allí.
 
-Desde **Inicio → Configurar formulario público** puedes editar las áreas, sus detalles dependientes, tipos y prioridades. Por ejemplo, al elegir `Odoo` el formulario puede mostrar `PDV`, `Inventario`, `Ventas` y `Compras`.
+## API principal
 
-La clave `publishable` está en `supabase-config.js` y es apta para el navegador. Nunca coloques una clave `secret` o `service_role` en este repositorio.
+- `POST /api/public/tickets`: crear solicitud pública (sin sesión).
+- `GET /api/tickets`, `POST /api/tickets`, `PATCH /api/tickets/:id`: cola y gestión protegidas por sesión administrativa.
+- `GET /api/form-config`: leer opciones públicas del formulario.
+- `PUT /api/form-config`: actualizar opciones (requiere sesión).
+- `GET`, `POST`, `DELETE /api/session`: consultar, iniciar y cerrar sesión.
 
-## Perfiles y personalización
+## Publicación
 
-La primera vez puedes crear un perfil local con nombre, iniciales y color. Desde el avatar puedes cambiar esos datos, crear o quitar categorías y cambiar de perfil. Cada perfil conserva sus propios tickets y preferencias en el navegador.
-
-El perfil visual sigue siendo personalizable por navegador. La cuenta de Supabase protege la lectura y edición de los tickets; el formulario público sólo puede crear solicitudes nuevas.
-
-## Pantallas principales
-
-- **Inicio:** bienvenida, resumen de la mesa, accesos rápidos y categorías.
-- **Recepción:** captura y edición detallada de tickets.
-- **En curso:** solicitudes que requieren revisión o un siguiente paso.
-- **Historial:** tickets cerrados y contexto de referencia.
+Esta versión necesita un proceso Node.js y almacenamiento persistente para `DATA_DIR`. GitHub Pages solo publica archivos estáticos y no ejecuta el backend; el workflow anterior de Pages se retiró. La demo de entrega se ejecuta en `localhost`.

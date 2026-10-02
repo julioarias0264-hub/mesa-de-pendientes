@@ -1,4 +1,5 @@
-window.MESA_FORM_DEFAULTS = {
+const formConfigRoot = typeof window !== 'undefined' ? window : globalThis;
+formConfigRoot.MESA_FORM_DEFAULTS = {
   areas: [
     { name: 'Odoo', subareas: ['PDV', 'Inventario', 'Ventas', 'Compras'] },
     { name: 'Administración', subareas: ['Facturación', 'Contabilidad', 'Reportes'] },
@@ -12,8 +13,8 @@ window.MESA_FORM_DEFAULTS = {
   theme: { mode: 'workspace', accent: '#f06a3c', hot: '#ff8051', ink: '#9c361b', initials: 'J', workspaceName: 'Julio' }
 };
 
-window.normalizeMesaFormConfig = function normalizeMesaFormConfig(config) {
-  const defaults = window.MESA_FORM_DEFAULTS;
+formConfigRoot.normalizeMesaFormConfig = function normalizeMesaFormConfig(config) {
+  const defaults = formConfigRoot.MESA_FORM_DEFAULTS;
   const areas = Array.isArray(config?.areas)
     ? config.areas.map((area) => {
       const name = typeof area === 'string' ? area : area?.name;
@@ -39,3 +40,5 @@ window.normalizeMesaFormConfig = function normalizeMesaFormConfig(config) {
     }
   };
 };
+
+if (typeof module !== 'undefined' && module.exports) module.exports = { MESA_FORM_DEFAULTS: formConfigRoot.MESA_FORM_DEFAULTS, normalizeMesaFormConfig: formConfigRoot.normalizeMesaFormConfig };
