@@ -12,7 +12,7 @@ Aplicación local en español para recibir solicitudes, organizar pendientes y c
 Desde una terminal, clona, instala y ejecuta el proyecto con este comando:
 
 ```bash
-git clone https://github.com/julioarias0264-hub/mesa-de-trabajo-julio.git && cd mesa-de-trabajo-julio && npm install && npm start
+git clone https://github.com/julioarias0264-hub/mesa-de-pendientes.git && cd mesa-de-pendientes && npm install && npm start
 ```
 
 Abre [http://localhost:3000](http://localhost:3000) y elige el nombre que quieres usar en tu mesa. Cada persona configura su propio perfil en su navegador; no se requiere contraseña ni archivo `.env`. El formulario para recibir solicitudes está en [http://localhost:3000/solicitar.html](http://localhost:3000/solicitar.html).
